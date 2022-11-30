@@ -145,34 +145,38 @@ def overlay_two_images(original_annotation_list, args):
             norm = (original_img - np.min(original_img)) / (np.max(original_img) - np.min(original_img))
             norm_img = np.uint8(norm*255)
             original = Image.fromarray(norm_img)
-            original.save(f'./tmp/{count}_original.png')
+            original.save(f'{args.save_everything_path}/{i}_original.png')
             
             annotation_img = Image.fromarray(change_arr)
             norm = (annotation_img - np.min(annotation_img)) / (np.max(annotation_img) - np.min(annotation_img))
             norm_img = np.uint8(norm*255)
             annotation = Image.fromarray(norm_img)
-            annotation.save(f'./tmp/{count}_annotation.png')
+            annotation.save(f'{args.save_everything_path}/{i}_annotation.png')
             # annotation.show()
 
             ## todo: if final annotation and original image size is same
             if original_arr.shape == change_arr.shape:
-                org = cv2.imread(f'./tmp/{count}_original.png', cv2.IMREAD_COLOR)
-                ann = cv2.imread(f'./tmp/{count}_annotation.png', cv2.IMREAD_COLOR)
+                org = cv2.imread(f'{args.save_everything_path}/{i}_original.png', cv2.IMREAD_COLOR)
+                ann = cv2.imread(f'{args.save_everything_path}/{i}_annotation.png', cv2.IMREAD_COLOR)
                 overlay = cv2.add(org, ann)
-                cv2.imwrite(f'./tmp/{count}_overlay.png',overlay)
+                cv2.imwrite(f'{args.save_overlay_path}/{i}_overlay.png',overlay)
+                cv2.imwrite(f'{args.save_everything_path}/{i}_overlay.png',overlay)
 
             ## todo: 
             ## 1. when height is different
             ## (2. when width is different)
             else:
-                org = cv2.imread(f'./tmp/{count}_original.png', cv2.IMREAD_COLOR)
-                ann = cv2.imread(f'./tmp/{count}_annotation.png', cv2.IMREAD_COLOR)
+                org = cv2.imread(f'{args.save_everything_path}/{i}_original.png', cv2.IMREAD_COLOR)
+                ann = cv2.imread(f'{args.save_everything_path}/{i}_annotation.png', cv2.IMREAD_COLOR)
                 cut = ann.shape[0] - org.shape[0]
+
+                """
+                ## upper and middle will not be used - only lower will be used
 
                 ## todo: 1-1 crop upper
                 upper_cropped = ann[cut:,:].copy()
                 upper_overlay = cv2.add(org, upper_cropped)
-                cv2.imwrite(f'./tmp/{count}_overlay_cut_upper.png',upper_overlay)
+                cv2.imwrite(f'./tmp/{i}_overlay_cut_upper.png',upper_overlay)
 
                 ## todo: 1-2 crop up & low
                 try:
@@ -181,19 +185,22 @@ def overlay_two_images(original_annotation_list, args):
                 except:
                     middle_cropped = ann[int((cut/2)):len(ann)-int((cut/2))-1,:].copy()
                     middle_overlay = cv2.add(org, middle_cropped)
-                cv2.imwrite(f'./tmp/{count}_overlay_cut_up_low.png',middle_overlay)
+                cv2.imwrite(f'./tmp/{i}_overlay_cut_up_low.png',middle_overlay)
+                """
 
                 ## todo: 1-3 crop lower 
                 lower_cropped = ann[:len(ann)-cut,:].copy()
                 lower_overlay = cv2.add(org, lower_cropped)
-                cv2.imwrite(f'./tmp/{count}_overlay_cut_lower.png',lower_overlay)
+                # cv2.imwrite(f'./tmp/{i}_overlay_cut_lower.png',lower_overlay)
+                cv2.imwrite(f'{args.save_overlay_path}/{i}_overlay.png',lower_overlay)
+                cv2.imwrite(f'{args.save_everything_path}/{i}_overlay.png',lower_overlay)
 
             count += 1
         
         except Exception as e:
             error_message = f'Error on {original_annotation_list[i]} -> {e}'
             print(error_message)
-            printsave(error_message)
+            # printsave(error_message)
             pass
 
 
@@ -226,5 +233,9 @@ def dicom2png(dicom_lists, args):
     print("---------- Preprocessing Done ----------")
 
 def dicom2png_overlay(original_annotation_list, args):
-    if not os.path.exists('./tmp'): os.mkdir('./tmp')   
+    if not os.path.exists(f'{args.save_everything_path}'): os.mkdir(f'{args.save_everything_path}')
+    if not os.path.exists(f'{args.save_overlay_path}'):    os.mkdir(f'{args.save_overlay_path}')
+
+    print("---------- Overlay Process Start ----------")
     overlay_two_images(original_annotation_list, args)
+    print("---------- Overlay Process Done ----------")
