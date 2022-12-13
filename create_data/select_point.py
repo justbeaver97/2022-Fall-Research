@@ -56,7 +56,7 @@ def main(args):
             key = cv2.waitKey(0)
 
             if key == ord('n'):
-                file_write = open('./' + now_str + '_' + folder_name + '.txt', 'a+')
+                file_write = open('../data/annotation_text_files/' + now_str + '_' + folder_name + '.txt', 'a+')
                 text_output = image_name
                 text_output += "," + str(len(clicked_points))
                 for points in clicked_points:

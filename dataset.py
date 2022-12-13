@@ -1,4 +1,5 @@
 import os 
+import cv2
 import pandas as pd
 import numpy as np
 import albumentations as A
@@ -6,6 +7,7 @@ import albumentations as A
 from albumentations.pytorch import ToTensorV2
 from torch.utils.data import Dataset, DataLoader
 from PIL import Image
+from tqdm import tqdm
 
 class CustomDataset(Dataset):
     def __init__(self, df, transform=None):
@@ -45,8 +47,10 @@ class CustomDataset(Dataset):
         return image, mask
 
 def load_data(args):
-    IMAGE_HEIGHT = args.height
-    IMAGE_WIDTH = args.width
+    print("---------- Starting Loading Dataset ----------")
+
+    IMAGE_HEIGHT = args.image_height
+    IMAGE_WIDTH = args.image_width
     BATCH_SIZE = args.batch_size
 
     dataset_path = '/content/gdrive/MyDrive/research'
@@ -99,4 +103,49 @@ def load_data(args):
         val_dataset, shuffle=False, batch_size=BATCH_SIZE
     )
 
+    print("---------- Loading Dataset Done ----------\n")
+
     return train_loader, val_loader
+
+def create_dataset(args):
+    print("---------- Starting Creating Dataset ----------")
+
+    label_coordinate_list = []
+    with open(f"{args.annotation_text_path}/{args.annotation_text_name}",'r') as f:
+        for line in f:
+            if line.strip().split(',')[1] != '0':
+                image_name = line.strip().split(',')[0]
+                y = line.strip().split(',')[-2]
+                x = line.strip().split(',')[-1]
+                label_coordinate_list.append([image_name, y, x])
+
+    # pprint.pprint(label_coordinate_list[:5])
+
+    if not os.path.exists(f'{args.dataset_path}'): 
+        os.mkdir(f'{args.dataset_path}')
+        os.mkdir(f'{args.dataset_path}/image')
+        os.mkdir(f'{args.dataset_path}/annotation')
+
+    for i in tqdm(range(len(label_coordinate_list))):
+        image_id = label_coordinate_list[i][0].split('_')[0]
+        original_image_name = image_id + '_original.png'
+        original_image_path = f'{args.overlaid_image}/{original_image_name}'
+        y, x = int(label_coordinate_list[i][1]), int(label_coordinate_list[i][2])
+
+        original_image = cv2.imread(original_image_path)
+        # cv2.imshow(original_image_name, original_image)
+        # cv2.waitKey(0)
+
+        h, w, c = original_image.shape
+
+        label_array = np.zeros((h, w))
+        label_array[y][x] = 1
+        # cv2.imshow('annotation', label_array)
+        # cv2.waitKey(0)
+
+        cv2.imwrite(f'{args.dataset_path}/image/{image_id}.png',original_image)
+        cv2.imwrite(f'{args.dataset_path}/annotation/{image_id}.png',label_array)
+
+    print("---------- Creating Dataset Done ----------")
+
+        

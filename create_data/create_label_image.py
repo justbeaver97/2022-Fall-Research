@@ -5,7 +5,7 @@ import numpy as np
 from tqdm import tqdm
 
 label_coordinate_list = []
-with open("221127_160821_overlay_only_copy.txt",'r') as f:
+with open("../data/annotation_text_files/221127_160821_overlay_only_copy.txt",'r') as f:
     for line in f:
         if line.strip().split(',')[1] != '0':
             image_name = line.strip().split(',')[0]
