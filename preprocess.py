@@ -6,14 +6,14 @@ import cv2
 import sys
 import torch
 import random
+import pprint
 
 from glob import glob
 from tqdm import tqdm
 from PIL import Image
-import pprint
 
-def get_dataset():
-    df = pd.read_excel('./dataset.xlsx')
+def get_dataset(args):
+    df = pd.read_excel(f'{args.excel_path}')
     df = df[df['annotation_image'].notna()]
     df = df.fillna(0)
     val_list = df.values.tolist()
@@ -27,7 +27,7 @@ def get_dataset():
     return useful_dicom, val_list
 
 def get_path(useful_dicoms, args):
-    tmp_dicom_lists = glob(f'{args.data_path}/*')
+    tmp_dicom_lists = glob(f'{args.dicom_data_path}/*')
     tmp, tmp2, tmp3, dicom_lists = [], [], [], []
     for dicom_list in tmp_dicom_lists:
         tmp.append(glob(f'{dicom_list}/*')[0])
@@ -59,8 +59,8 @@ def get_pixel_array(dcm_info, path, data_name, count, args):
     norm_img = np.uint8(norm*255)
     show_img = Image.fromarray(norm_img)
 
-    # show_img.save(f'{args.save_path}/original_image/{path[0]}_{path[1]}_{path[2]}_{count}_{data_name}.png')
-    show_img.save(f'{args.save_path}/original_image/{path[0]}_{path[1]}_{path[2]}_{path[3]}_{data_name}.png')
+    # show_img.save(f'{args.dicom_to_png_path}/original_image/{path[0]}_{path[1]}_{path[2]}_{count}_{data_name}.png')
+    show_img.save(f'{args.dicom_to_png_path}/original_image/{path[0]}_{path[1]}_{path[2]}_{path[3]}_{data_name}.png')
     count += 1
     # show_img.show()
     return count
@@ -73,8 +73,8 @@ def get_overlay_array(dcm_info, path, data_name, count, args):
                 dcm_img[i][j] = 254
     show_img = Image.fromarray(dcm_img)
 
-    # show_img.save(f'{args.save_path}/annotation_image/{path[0]}_{path[1]}_{path[2]}_{count}_{data_name}.png')
-    show_img.save(f'{args.save_path}/annotation_image/{path[0]}_{path[1]}_{path[2]}_{path[3]}_{data_name}.png')
+    # show_img.save(f'{args.dicom_to_png_path}/annotation_image/{path[0]}_{path[1]}_{path[2]}_{count}_{data_name}.png')
+    show_img.save(f'{args.dicom_to_png_path}/annotation_image/{path[0]}_{path[1]}_{path[2]}_{path[3]}_{data_name}.png')
     count += 1
     # show_img.show()
     return count
@@ -104,6 +104,7 @@ def overlay_two_images(original_annotation_list, args):
             # print(f"annotation overlay range: \t {annotation_dcm[0x6000,0x0050]}")
 
             ## todo: filling width
+            # if original_arr.shape[0] < annotation_arr.shape[0]:
             left_fill = annotation_dcm[0x6000,0x0050][1]-1
             middle_fill = len(annotation_arr[0])
             right_fill = len(original_arr[0])-(annotation_dcm[0x6000,0x0050][1]-1)-len(annotation_arr[0])
@@ -127,7 +128,7 @@ def overlay_two_images(original_annotation_list, args):
                 lower_fill = len(original_arr)-(annotation_dcm[0x6000,0x0050][0]-1)-len(annotation_arr)
                 # print(f'lower fill: {len(original_arr)} - {annotation_dcm[0x6000,0x0050][0]-1} - {len(annotation_arr)} = {lower_fill}')
 
-                high = np.zeros((upper_fill,original_arr.shape[1]))
+                high = np.zeros((upper_fill, original_arr.shape[1]))
                 low = np.zeros((lower_fill, original_arr.shape[1]))
 
                 tmp = np.vstack([high, new_arr])
@@ -147,29 +148,29 @@ def overlay_two_images(original_annotation_list, args):
             norm = (original_img - np.min(original_img)) / (np.max(original_img) - np.min(original_img))
             norm_img = np.uint8(norm*255)
             original = Image.fromarray(norm_img)
-            original.save(f'{args.save_everything_path}/{i}_original.png')
+            original.save(f'{args.overlaid_image}/{i}_original.png')
             
             annotation_img = Image.fromarray(change_arr)
             norm = (annotation_img - np.min(annotation_img)) / (np.max(annotation_img) - np.min(annotation_img))
             norm_img = np.uint8(norm*255)
             annotation = Image.fromarray(norm_img)
-            annotation.save(f'{args.save_everything_path}/{i}_annotation.png')
+            annotation.save(f'{args.overlaid_image}/{i}_annotation.png')
             # annotation.show()
 
             ## todo: if final annotation and original image size is same
             if original_arr.shape == change_arr.shape:
-                org = cv2.imread(f'{args.save_everything_path}/{i}_original.png', cv2.IMREAD_COLOR)
-                ann = cv2.imread(f'{args.save_everything_path}/{i}_annotation.png', cv2.IMREAD_COLOR)
+                org = cv2.imread(f'{args.overlaid_image}/{i}_original.png', cv2.IMREAD_COLOR)
+                ann = cv2.imread(f'{args.overlaid_image}/{i}_annotation.png', cv2.IMREAD_COLOR)
                 overlay = cv2.add(org, ann)
-                cv2.imwrite(f'{args.save_overlay_path}/{i}_overlay.png',overlay)
-                cv2.imwrite(f'{args.save_everything_path}/{i}_overlay.png',overlay)
+                cv2.imwrite(f'{args.overlaid_image_only}/{i}_overlay.png',overlay)
+                cv2.imwrite(f'{args.overlaid_image}/{i}_overlay.png',overlay)
 
             ## todo: 
             ## 1. when height is different
             ## (2. when width is different)
             else:
-                org = cv2.imread(f'{args.save_everything_path}/{i}_original.png', cv2.IMREAD_COLOR)
-                ann = cv2.imread(f'{args.save_everything_path}/{i}_annotation.png', cv2.IMREAD_COLOR)
+                org = cv2.imread(f'{args.overlaid_image}/{i}_original.png', cv2.IMREAD_COLOR)
+                ann = cv2.imread(f'{args.overlaid_image}/{i}_annotation.png', cv2.IMREAD_COLOR)
                 cut = ann.shape[0] - org.shape[0]
 
                 """
@@ -194,8 +195,8 @@ def overlay_two_images(original_annotation_list, args):
                 lower_cropped = ann[:len(ann)-cut,:].copy()
                 lower_overlay = cv2.add(org, lower_cropped)
                 # cv2.imwrite(f'./tmp/{i}_overlay_cut_lower.png',lower_overlay)
-                cv2.imwrite(f'{args.save_overlay_path}/{i}_overlay.png',lower_overlay)
-                cv2.imwrite(f'{args.save_everything_path}/{i}_overlay.png',lower_overlay)
+                cv2.imwrite(f'{args.overlaid_image_only}/{i}_overlay.png',lower_overlay)
+                cv2.imwrite(f'{args.overlaid_image}/{i}_overlay.png',lower_overlay)
 
             count += 1
         
@@ -206,19 +207,18 @@ def overlay_two_images(original_annotation_list, args):
             pass
 
 
- 
 def printsave(*a):
     file = open('error_log.txt','a')
     print(*a,file=file)
  
 
 def dicom2png(dicom_lists, args):
-    if not os.path.exists(f'{args.save_path}'):                  os.mkdir(f'{args.save_path}')
-    if not os.path.exists(f'{args.save_path}/original_image'):   os.mkdir(f'{args.save_path}/original_image')
-    if not os.path.exists(f'{args.save_path}/annotation_image'): os.mkdir(f'{args.save_path}/annotation_image')
+    if not os.path.exists(f'{args.save_dicom_to_png_pathpath}'):         os.mkdir(f'{args.dicom_to_png_path}')
+    if not os.path.exists(f'{args.dicom_to_png_path}/original_image'):   os.mkdir(f'{args.dicom_to_png_path}/original_image')
+    if not os.path.exists(f'{args.dicom_to_png_path}/annotation_image'): os.mkdir(f'{args.dicom_to_png_path}/annotation_image')
     count = 0
     
-    print("---------- Preprocessing Start ----------")
+    print("---------- Starting Preprocessing ----------")
     for dicom_list in tqdm(dicom_lists):
         path = dicom_list.split('/')[2:6]
         data_name = dicom_list.split('/')[-1]
@@ -232,15 +232,15 @@ def dicom2png(dicom_lists, args):
         except Exception as e:
             print(f'Error on {dicom_list} -> {e}')
 
-    print("---------- Preprocessing Done ----------")
+    print("---------- Preprocessing Done ----------\n")
 
 def dicom2png_overlay(original_annotation_list, args):
-    if not os.path.exists(f'{args.save_everything_path}'): os.mkdir(f'{args.save_everything_path}')
-    if not os.path.exists(f'{args.save_overlay_path}'):    os.mkdir(f'{args.save_overlay_path}')
+    if not os.path.exists(f'{args.overlaid_image}'):      os.mkdir(f'{args.overlaid_image}')
+    if not os.path.exists(f'{args.overlaid_image_only}'): os.mkdir(f'{args.overlaid_image_only}')
 
-    print("---------- Overlay Process Start ----------")
+    print("---------- Starting Overlay Process ----------")
     overlay_two_images(original_annotation_list, args)
-    print("---------- Overlay Process Done ----------")
+    print("---------- Overlay Process Done ----------\n")
 
 def customize_seed(seed):
     torch.manual_seed(seed)
@@ -250,3 +250,53 @@ def customize_seed(seed):
     torch.backends.cudnn.benchmark = False
     np.random.seed(seed)
     random.seed(seed)
+
+def pad_original_image(args):
+    if not os.path.exists(f'{args.padded_image}'): 
+        os.mkdir(f'{args.padded_image}')
+    overlaid_image_path = sorted(glob(f'{args.overlaid_image}/*_overlay.png'))
+
+    for overlaid_path in tqdm(overlaid_image_path):
+        image_num = overlaid_path.split('/')[-1].split('_')[0]
+        overlaid_image_array = cv2.imread(overlaid_path)
+        fill = abs(overlaid_image_array.shape[0] - overlaid_image_array.shape[1])
+        
+        ## when height > width
+        if overlaid_image_array.shape[0] > overlaid_image_array.shape[1]:
+            padded_array = np.zeros((
+                overlaid_image_array.shape[0], overlaid_image_array.shape[0], 3
+            ))
+        
+            for i in range(overlaid_image_array.shape[0]):
+                left = np.zeros((int(fill/2),3))
+                middle = np.array(overlaid_image_array[i])
+                if fill % 2 == 0: right = np.zeros((int(fill/2),3))
+                else:             right = np.zeros((int(fill/2)+1,3))
+
+                tmp = np.concatenate((left, middle), axis=0)
+                padded_array[i] = np.concatenate((tmp, right), axis=0)
+
+        ## when height < width
+        elif overlaid_image_array.shape[0] < overlaid_image_array.shape[1]:            
+            padded_array = np.zeros((
+                overlaid_image_array.shape[1], overlaid_image_array.shape[1], 3
+            ))
+
+            high = np.zeros((int(fill/2),overlaid_image_array.shape[1],3))
+            if fill % 2 == 0: low = np.zeros((int(fill/2),overlaid_image_array.shape[1],3))
+            else:             low = np.zeros((int(fill/2)+1,overlaid_image_array.shape[1],3))
+
+            tmp = np.vstack([high, overlaid_image_array])
+            padded_array = np.vstack([tmp, low])
+        
+        ## when height == width
+        else: 
+            padded_array = np.zeros((
+                overlaid_image_array.shape[0], overlaid_image_array.shape[1], 3
+            ))
+            padded_array = overlaid_image_array[:]
+
+        norm = (padded_array - np.min(padded_array)) / (np.max(padded_array) - np.min(padded_array))
+        norm_img = np.uint8(norm*255)
+        padded_image = Image.fromarray(norm_img)
+        padded_image.save(f'{args.padded_image}/{image_num}_pad.png')
