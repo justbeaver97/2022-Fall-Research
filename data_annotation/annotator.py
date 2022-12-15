@@ -2,13 +2,11 @@
 reference: https://gaussian37.github.io/vision-opencv-coordinate_extraction/
 """
 
-import sys
-import subprocess
+
 import os
 from datetime import datetime
 import cv2
 import argparse
-import numpy as np
 
 
 dir_del = None
@@ -33,28 +31,16 @@ def GetArgument():
     ap = argparse.ArgumentParser()
     ap.add_argument("--path", default='./data/padded_image',
                     help="Enter the image files path")
-    ap.add_argument("--sampling", default=1,
-                    help="Enter the sampling number.(default = 1)")
     args = vars(ap.parse_args())
     path = args['path']
-    sampling = int(args['sampling'])
-    return path, sampling
+    return path
 
 
 def main():
     global clone, clicked_points
 
-    print("\n")
-    print("1. 입력한 파라미터인 이미지 경로(--path)에서 이미지들을 차례대로 읽어옵니다.")
-    print("2. 키보드에서 'n'을 누르면(next 약자) 다음 이미지로 넘어갑니다. 이 때, 작업한 점의 좌표가 저장 됩니다.")
-    print("3. 키보드에서 'b'를 누르면(back 약자) 직전에 입력한 좌표를 취소한다.")
-    print("4. 이미지 경로에 존재하는 모든 이미지에 작업을 마친 경우 또는 'q'를 누르면(quit 약자) 프로그램이 종료됩니다.")
-    print("\n")
-    print("출력 포맷 : 이미지명,점의갯수,y1,x1,y2,x2,...")
-    print("\n")
-
     # 이미지 디렉토리 경로를 입력 받는다.
-    path, sampling = GetArgument()
+    path = GetArgument()
     # path의 이미지명을 받는다.
     image_names = sorted(os.listdir(path))
 
