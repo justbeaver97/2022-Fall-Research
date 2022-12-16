@@ -55,8 +55,8 @@ def main():
 
     # 결과 파일을 저장하기 위하여 현재 시각을 입력 받는다.
     now = datetime.now()
-    now_str = "%s%02d%02d_%02d%02d%02d" % (
-        now.year - 2000, now.month, now.day, now.hour, now.minute, now.second)
+    # now_str = "%s%02d%02d_%02d%02d%02d" % (
+    #     now.year - 2000, now.month, now.day, now.hour, now.minute, now.second)
 
     # 새 윈도우 창을 만들고 그 윈도우 창에 click_and_crop 함수를 세팅해 줍니다.
     cv2.namedWindow("image")
@@ -76,8 +76,10 @@ def main():
             if key == ord('n'):
                 # 텍스트 파일을 출력 하기 위한 stream을 open 합니다.
                 # 중간에 프로그램이 꺼졌을 경우 작업한 것을 저장하기 위해 쓸 때 마다 파일을 연다.
-                file_write = open('./' + now_str + '_' +
-                                  folder_name + '.txt', 'a+')
+                # file_write = open('./' + now_str + '_' +
+                #                   folder_name + '.txt', 'a+')
+                file_write = open(
+                    '../data/annotation_text_files/annotation.txt', 'a+')
 
                 text_output = image_name
                 text_output += "," + str(len(clicked_points))
