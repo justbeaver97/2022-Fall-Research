@@ -1,14 +1,18 @@
 import os 
 import cv2
 import csv
+import torch
 import pandas as pd
 import numpy as np
 import albumentations as A
 
 from albumentations.pytorch import ToTensorV2
+from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader
 from PIL import Image
 from tqdm import tqdm
+
+
 
 # class CustomDataset(Dataset):
 #     def __init__(self, df, args, transform=None):
@@ -84,22 +88,103 @@ class CustomDataset(Dataset):
         # )
         image_path = f'{self.dataset_path}/{image_dir}'
         image = np.array(Image.open(image_path).convert("RGB"))
+        # image = Image.open(image_path).convert("RGB")
 
-        mask = np.zeros([self.image_resize, self.image_resize, 3])
-        for i in range(3):
-            mask[label_0_y, label_0_x, i] = 1
-            mask[label_1_y, label_1_x, i] = 1
-            mask[label_2_y, label_2_x, i] = 1
-            mask[label_3_y, label_3_x, i] = 1
-            mask[label_4_y, label_4_x, i] = 1
-            mask[label_5_y, label_5_x, i] = 1
+        ##TODO: must have torch.Size([1, 6, 512, 512]) ##
+
+        ## torch.Size([1, 1, 512, 512])
+        # mask = np.zeros([self.image_resize, self.image_resize])
+        # mask[label_0_y, label_0_x] = 1
+        # mask[label_1_y, label_1_x] = 1
+        # mask[label_2_y, label_2_x] = 1
+        # mask[label_3_y, label_3_x] = 1
+        # mask[label_4_y, label_4_x] = 1
+        # mask[label_5_y, label_5_x] = 1
+
+
+        ## torch.Size([1, 1, 512, 512, 3])
+        # mask = np.zeros([self.image_resize, self.image_resize, 3])
+        # for i in range(3):
+        #     mask[label_0_y, label_0_x, i] = 1
+        #     mask[label_1_y, label_1_x, i] = 1
+        #     mask[label_2_y, label_2_x, i] = 1
+        #     mask[label_3_y, label_3_x, i] = 1
+        #     mask[label_4_y, label_4_x, i] = 1
+        #     mask[label_5_y, label_5_x, i] = 1
+
+        
+        ## torch.Size([1, 1, 512, 512, 6]
+        # mask = np.zeros([self.image_resize, self.image_resize, 6])
+        # mask[label_0_y, label_0_x, 0] = 1.0
+        # mask[label_1_y, label_1_x, 1] = 1.0
+        # mask[label_2_y, label_2_x, 2] = 1.0
+        # mask[label_3_y, label_3_x, 3] = 1.0
+        # mask[label_4_y, label_4_x, 4] = 1.0
+        # mask[label_5_y, label_5_x, 5] = 1.0
+
+
+        ## torch.Size([1, 1, 512, 512, 6]
+        # mask = np.zeros([self.image_resize, self.image_resize, 6])
+        # mask[label_0_y, label_0_x, 0] = 1.0
+        # mask[label_1_y, label_1_x, 1] = 2.0
+        # mask[label_2_y, label_2_x, 2] = 3.0
+        # mask[label_3_y, label_3_x, 3] = 4.0
+        # mask[label_4_y, label_4_x, 4] = 5.0
+        # mask[label_5_y, label_5_x, 5] = 6.0
+
+
+        ## torch.Size([1, 1, 512, 512, 512])
+        ## reference
+        ## https://albumentations.ai/docs/getting_started/mask_augmentation/
+        ## https://medium.com/pytorch/multi-target-in-albumentations-16a777e9006e
+        mask0 = np.zeros([self.image_resize, self.image_resize])
+        mask1 = np.zeros([self.image_resize, self.image_resize])
+        mask2 = np.zeros([self.image_resize, self.image_resize])
+        mask3 = np.zeros([self.image_resize, self.image_resize])
+        mask4 = np.zeros([self.image_resize, self.image_resize])
+        mask5 = np.zeros([self.image_resize, self.image_resize])
+        mask0[label_0_y, label_0_x] = 1.0
+        mask1[label_1_y, label_1_x] = 1.0
+        mask2[label_2_y, label_2_x] = 1.0
+        mask3[label_3_y, label_3_x] = 1.0
+        mask4[label_4_y, label_4_x] = 1.0
+        mask5[label_5_y, label_5_x] = 1.0
+        # mask = np.array([
+        #     mask0, mask1, mask2, mask3, mask4, mask5
+        # ])
+        # masks = [
+        #     mask0, mask1, mask2, mask3, mask4, mask5
+        # ]
+        
+
+        # print("Image before ", image.shape)
+        # print("Mask before ", mask.shape)
+        # print("Masks after ", len(masks), masks[0].shape)
+        # print("Mask0 before ", mask0.shape)
 
         if self.transform:
-            augmentations = self.transform(image=image, mask=mask)
+            # augmentations = self.transform(image=image, mask=mask)
+            augmentations = self.transform(image=image, masks=[mask0,mask1,mask2,mask3,mask4,mask5])
+            # augmentations = self.transform(image=image, masks=masks)
             image = augmentations["image"]
-            mask = augmentations["mask"]
+            mask0 = augmentations["masks"][0]
+            mask1 = augmentations["masks"][1]
+            mask2 = augmentations["masks"][2]
+            mask3 = augmentations["masks"][3]
+            mask4 = augmentations["masks"][4]
+            mask5 = augmentations["masks"][5]
+            # masks = augmentations["masks"]
 
-        return image, mask
+
+        ## reference: https://sanghyu.tistory.com/85
+        masks = torch.stack([mask0,mask1,mask2,mask3,mask4,mask5], dim=0) 
+
+        # print("Image after ", image.shape)
+        # print("Mask after ", masks.shape)
+        # print("Masks after ", len(masks), masks[0].shape)
+        # print("Mask0 after ", mask0.shape)
+
+        return image, masks
 
 def load_data(args):
     print("---------- Starting Loading Dataset ----------")
@@ -132,6 +217,21 @@ def load_data(args):
             ),
             ToTensorV2(),
         ])
+
+    # train_transform = transforms.Compose(
+    #     [
+    #         transforms.Resize((224, 224)),
+    #         transforms.ToTensor(),
+    #         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+    #     ]
+    # )
+    # val_transform = transforms.Compose(
+    #     [
+    #         transforms.Resize((224, 224)),
+    #         transforms.ToTensor(),
+    #         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+    #     ]
+    # )
 
     train_dataset = CustomDataset(
         train_df, args, train_transform
