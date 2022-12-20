@@ -1,4 +1,3 @@
-import os 
 import cv2
 import csv
 import torch
@@ -7,53 +6,10 @@ import numpy as np
 import albumentations as A
 
 from albumentations.pytorch import ToTensorV2
-from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader
 from PIL import Image
 from tqdm import tqdm
 
-
-
-# class CustomDataset(Dataset):
-#     def __init__(self, df, args, transform=None):
-#         super().__init__()
-#         self.df = df.reset_index()
-#         self.image_dir = self.df["image"]
-#         self.label_dir = self.df['label']
-#         self.dataset_path = args.dataset_path
-#         self.transform = transform
-#         # self.image_transform = image_transform
-#         # self.label_transform = label_transform
-
-#     def __len__(self):
-#         return len(self.df)
-
-#     def __getitem__(self, idx):
-#         image_dir = self.image_dir[idx]
-#         label_dir = self.label_dir[idx]
-#         data_dir = os.path.join(
-#             self.dataset_path.split('/')[0],self.dataset_path.split('/')[1]
-#         )
-
-#         image_path = f'{data_dir}/{image_dir}'
-#         mask_path = f'{data_dir}/{label_dir}'
-#         # image = Image.open(image_path)
-#         # label = Image.open(label_path)
-#         # if self.image_transform:
-#         #     image = self.image_transform(image)
-#         # if self.label_transform:
-#         #     label = self.label_transform(label)
-
-#         image = np.array(Image.open(image_path).convert("RGB"))
-#         mask = np.array(Image.open(mask_path).convert("L"), dtype=np.float32)
-#         # mask[mask == 255.0] = 1.0
-
-#         if self.transform:
-#             augmentations = self.transform(image=image, mask=mask)
-#             image = augmentations["image"]
-#             mask = augmentations["mask"]
-
-#         return image, mask
 
 class CustomDataset(Dataset):
     def __init__(self, df, args, transform=None):
@@ -66,7 +22,6 @@ class CustomDataset(Dataset):
         self.label_3_y, self.label_3_x = self.df['label_3_y'], self.df['label_3_x']
         self.label_4_y, self.label_4_x = self.df['label_4_y'], self.df['label_4_x']
         self.label_5_y, self.label_5_x = self.df['label_5_y'], self.df['label_5_x']
-        # self.dataset_path = args.dataset_path
         self.dataset_path = args.overlaid_image
         self.image_resize = args.image_resize
         self.transform = transform
@@ -83,57 +38,9 @@ class CustomDataset(Dataset):
         label_4_y, label_4_x = self.label_4_y[idx], self.label_4_x[idx]
         label_5_y, label_5_x = self.label_5_y[idx], self.label_5_x[idx]
 
-        # data_dir = os.path.join(
-        #     self.dataset_path.split('/')[0],self.dataset_path.split('/')[1]
-        # )
         image_path = f'{self.dataset_path}/{image_dir}'
         image = np.array(Image.open(image_path).convert("RGB"))
-        # image = Image.open(image_path).convert("RGB")
 
-        ##TODO: must have torch.Size([1, 6, 512, 512]) ##
-
-        ## torch.Size([1, 1, 512, 512])
-        # mask = np.zeros([self.image_resize, self.image_resize])
-        # mask[label_0_y, label_0_x] = 1
-        # mask[label_1_y, label_1_x] = 1
-        # mask[label_2_y, label_2_x] = 1
-        # mask[label_3_y, label_3_x] = 1
-        # mask[label_4_y, label_4_x] = 1
-        # mask[label_5_y, label_5_x] = 1
-
-
-        ## torch.Size([1, 1, 512, 512, 3])
-        # mask = np.zeros([self.image_resize, self.image_resize, 3])
-        # for i in range(3):
-        #     mask[label_0_y, label_0_x, i] = 1
-        #     mask[label_1_y, label_1_x, i] = 1
-        #     mask[label_2_y, label_2_x, i] = 1
-        #     mask[label_3_y, label_3_x, i] = 1
-        #     mask[label_4_y, label_4_x, i] = 1
-        #     mask[label_5_y, label_5_x, i] = 1
-
-        
-        ## torch.Size([1, 1, 512, 512, 6]
-        # mask = np.zeros([self.image_resize, self.image_resize, 6])
-        # mask[label_0_y, label_0_x, 0] = 1.0
-        # mask[label_1_y, label_1_x, 1] = 1.0
-        # mask[label_2_y, label_2_x, 2] = 1.0
-        # mask[label_3_y, label_3_x, 3] = 1.0
-        # mask[label_4_y, label_4_x, 4] = 1.0
-        # mask[label_5_y, label_5_x, 5] = 1.0
-
-
-        ## torch.Size([1, 1, 512, 512, 6]
-        # mask = np.zeros([self.image_resize, self.image_resize, 6])
-        # mask[label_0_y, label_0_x, 0] = 1.0
-        # mask[label_1_y, label_1_x, 1] = 2.0
-        # mask[label_2_y, label_2_x, 2] = 3.0
-        # mask[label_3_y, label_3_x, 3] = 4.0
-        # mask[label_4_y, label_4_x, 4] = 5.0
-        # mask[label_5_y, label_5_x, 5] = 6.0
-
-
-        ## torch.Size([1, 1, 512, 512, 512])
         ## reference
         ## https://albumentations.ai/docs/getting_started/mask_augmentation/
         ## https://medium.com/pytorch/multi-target-in-albumentations-16a777e9006e
@@ -149,23 +56,9 @@ class CustomDataset(Dataset):
         mask3[label_3_y, label_3_x] = 1.0
         mask4[label_4_y, label_4_x] = 1.0
         mask5[label_5_y, label_5_x] = 1.0
-        # mask = np.array([
-        #     mask0, mask1, mask2, mask3, mask4, mask5
-        # ])
-        # masks = [
-        #     mask0, mask1, mask2, mask3, mask4, mask5
-        # ]
-        
-
-        # print("Image before ", image.shape)
-        # print("Mask before ", mask.shape)
-        # print("Masks after ", len(masks), masks[0].shape)
-        # print("Mask0 before ", mask0.shape)
 
         if self.transform:
-            # augmentations = self.transform(image=image, mask=mask)
             augmentations = self.transform(image=image, masks=[mask0,mask1,mask2,mask3,mask4,mask5])
-            # augmentations = self.transform(image=image, masks=masks)
             image = augmentations["image"]
             mask0 = augmentations["masks"][0]
             mask1 = augmentations["masks"][1]
@@ -173,16 +66,9 @@ class CustomDataset(Dataset):
             mask3 = augmentations["masks"][3]
             mask4 = augmentations["masks"][4]
             mask5 = augmentations["masks"][5]
-            # masks = augmentations["masks"]
-
 
         ## reference: https://sanghyu.tistory.com/85
         masks = torch.stack([mask0,mask1,mask2,mask3,mask4,mask5], dim=0) 
-
-        # print("Image after ", image.shape)
-        # print("Mask after ", masks.shape)
-        # print("Masks after ", len(masks), masks[0].shape)
-        # print("Mask0 after ", mask0.shape)
 
         return image, masks
 
@@ -199,7 +85,7 @@ def load_data(args):
     train_transform = A.Compose([
             A.Resize(height=IMAGE_RESIZE, width=IMAGE_RESIZE),
             A.Rotate(limit=15, p=1.0),
-            # A.HorizontalFlip(p=0.5),
+            A.HorizontalFlip(p=0.5),
             # A.VerticalFlip(p=0.1),
             A.Normalize(
                 mean=(0.485, 0.456, 0.406), 
@@ -217,21 +103,6 @@ def load_data(args):
             ),
             ToTensorV2(),
         ])
-
-    # train_transform = transforms.Compose(
-    #     [
-    #         transforms.Resize((224, 224)),
-    #         transforms.ToTensor(),
-    #         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
-    #     ]
-    # )
-    # val_transform = transforms.Compose(
-    #     [
-    #         transforms.Resize((224, 224)),
-    #         transforms.ToTensor(),
-    #         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
-    #     ]
-    # )
 
     train_dataset = CustomDataset(
         train_df, args, train_transform
@@ -315,9 +186,9 @@ def create_dataset(args):
             if line.strip().split(',')[1] != '0':
                 image_name = line.strip().split(',')[0]
                 image_num = line.strip().split(',')[0].split('_')[0]
-                tmp = []
                 image = cv2.imread(f'{args.padded_image}/{image_name}')
                 resize_value = args.image_resize / image.shape[0]
+                tmp = []
 
                 for i in range(6):
                     y = int(line.strip().split(',')[(2*i)+2])
@@ -325,22 +196,18 @@ def create_dataset(args):
 
                     ## save the resized coordinates
                     tmp.append([round(y*resize_value),round(x*resize_value)])
+
                 label_coordinate_list.append([
                     f'{image_num}_original.png', 
                     tmp[0][0],tmp[0][1],tmp[1][0],tmp[1][1],tmp[2][0],tmp[2][1],
                     tmp[3][0],tmp[3][1],tmp[4][0],tmp[4][1],tmp[5][0],tmp[5][1],
                 ])
-                # label_coordinate_list.append([
-                #     f'{image_num}_original.png', 
-                #     tmp[0],tmp[1],tmp[2],
-                #     tmp[3],tmp[4],tmp[5],
-                # ])
 
-    # fields = ['image','label_0','label_1','label_2','label_3','label_4','label_5']
     fields = ['image',
         'label_0_y','label_0_x','label_1_y','label_1_x','label_2_y','label_2_x',
         'label_3_y','label_3_x','label_4_y','label_4_x','label_5_y','label_5_x'
     ]
+
     with open(f'{args.dataset_csv_path}', 'w',newline='') as f: 
         write = csv.writer(f) 
         write.writerow(fields) 

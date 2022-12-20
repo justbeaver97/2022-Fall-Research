@@ -82,17 +82,12 @@ def train_function(args, DEVICE, model, loss_fn, optimizer, scaler, loader):
     for batch_idx, (data, targets) in enumerate(loop):
         data = data.to(device=DEVICE)
         targets = targets.float().to(device=DEVICE)
-        # print("data: ",data.shape)
-        # print("targets: ", targets.shape)
         # targets = targets.float().unsqueeze(1).to(device=DEVICE)
 
         # forward
         with torch.cuda.amp.autocast():
             predictions = model(data)
-            # print("predictions: ",predictions.shape)
-            # print("targets: ", targets.shape)
             loss = loss_fn(predictions, targets)
-            # print(loss)
 
         # backward
         optimizer.zero_grad()
