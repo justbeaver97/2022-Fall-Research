@@ -11,6 +11,7 @@ import numpy as np
 from tqdm import tqdm
 from log import log_results
 
+
 def check_accuracy(loader, model, device):
     print("Starting Validation")
 
@@ -29,7 +30,7 @@ def check_accuracy(loader, model, device):
             preds = torch.sigmoid(model(x))
             preds = (preds > 0.5).float()
 
-            ## compare only labels
+            # compare only labels
             # for i in range(len(preds[0][0])):
             #     for j in range(len(preds[0][0][i])):
             #         if int(y[0][0][i][j]) != 0:
@@ -46,23 +47,23 @@ def check_accuracy(loader, model, device):
             #             predict_as_label += 1
             #             # print(float(preds[0][0][i][j]), i, j)
 
-            ## compare whole picture
+            # compare whole picture
             num_correct += (preds == y).sum()
             num_pixels += torch.numel(preds)
             dice_score += (2 * (preds * y).sum()) / ((preds + y).sum() + 1e-8)
 
-            
     label_accuracy = num_labels_correct/(num_labels+1e-8)
     whole_image_accuracy = num_correct/num_pixels*100
 
     print(f"Number of pixels predicted as label: {predict_as_label}")
     print(f"Got {num_labels_correct}/{num_labels} with acc {label_accuracy:.2f}")
     print(f"Got {num_correct}/{num_pixels} with acc {whole_image_accuracy:.2f}")
-    
+
     # print(f"Dice score: {dice_score/len(loader)}")
     model.train()
 
     return label_accuracy, whole_image_accuracy, predict_as_label
+
 
 def save_predictions_as_imgs(loader, model, folder="saved_images", device="cuda"):
     model.eval()
@@ -75,6 +76,7 @@ def save_predictions_as_imgs(loader, model, folder="saved_images", device="cuda"
         torchvision.utils.save_image(y.unsqueeze(1), f"{folder}{idx}.png")
 
     model.train()
+
 
 def train_function(args, DEVICE, model, loss_fn, optimizer, scaler, loader):
     loop = tqdm(loader)
@@ -97,26 +99,31 @@ def train_function(args, DEVICE, model, loss_fn, optimizer, scaler, loader):
 
         # update tqdm loop
         loop.set_postfix(loss=loss.item())
-    
+
     return loss.item()
+
 
 def train(args, DEVICE, model, loss_fn, optimizer, scaler, train_loader, val_loader):
     count, pth_save_point, best_loss = 0, 0, np.inf
 
-    if not os.path.exists('./results'): os.mkdir(f'./results')
+    if not os.path.exists('./results'):
+        os.mkdir(f'./results')
 
     for epoch in range(args.epochs):
         print(f"\nRunning Epoch # {epoch}")
-        loss = train_function(args, DEVICE, model, loss_fn, optimizer, scaler, train_loader)
-        label_accuracy, segmentation_accuracy, predict_as_label = check_accuracy(val_loader, model, device=DEVICE)
+        loss = train_function(args, DEVICE, model, loss_fn,
+                              optimizer, scaler, train_loader)
+        label_accuracy, segmentation_accuracy, predict_as_label = check_accuracy(
+            val_loader, model, device=DEVICE)
 
         if args.wandb:
-            log_results(args, loss, label_accuracy, segmentation_accuracy, predict_as_label)
+            log_results(args, loss, label_accuracy,
+                        segmentation_accuracy, predict_as_label)
 
         checkpoint = {
-                "state_dict": model.state_dict(),
-                "optimizer":  optimizer.state_dict(),
-            }
+            "state_dict": model.state_dict(),
+            "optimizer":  optimizer.state_dict(),
+        }
         if pth_save_point % 5 == 0:
             torch.save(checkpoint, f"./results/UNet_Epoch_{epoch}.pth")
         pth_save_point += 1
