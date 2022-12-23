@@ -50,12 +50,20 @@ class CustomDataset(Dataset):
         mask3 = np.zeros([self.image_resize, self.image_resize])
         mask4 = np.zeros([self.image_resize, self.image_resize])
         mask5 = np.zeros([self.image_resize, self.image_resize])
-        mask0[label_0_y, label_0_x] = 1.0
-        mask1[label_1_y, label_1_x] = 1.0
-        mask2[label_2_y, label_2_x] = 1.0
-        mask3[label_3_y, label_3_x] = 1.0
-        mask4[label_4_y, label_4_x] = 1.0
-        mask5[label_5_y, label_5_x] = 1.0
+
+        # mask0[label_0_y, label_0_x] = 1.0
+        # mask1[label_1_y, label_1_x] = 1.0
+        # mask2[label_2_y, label_2_x] = 1.0
+        # mask3[label_3_y, label_3_x] = 1.0
+        # mask4[label_4_y, label_4_x] = 1.0
+        # mask5[label_5_y, label_5_x] = 1.0
+
+        mask0 = dilate_pixel(mask0, label_0_y, label_0_x)
+        mask1 = dilate_pixel(mask1, label_1_y, label_1_x)
+        mask2 = dilate_pixel(mask2, label_2_y, label_2_x)
+        mask3 = dilate_pixel(mask3, label_3_y, label_3_x)
+        mask4 = dilate_pixel(mask4, label_4_y, label_4_x)
+        mask5 = dilate_pixel(mask5, label_5_y, label_5_x)
 
         if self.transform:
             augmentations = self.transform(
@@ -73,6 +81,16 @@ class CustomDataset(Dataset):
 
         return image, masks
 
+def dilate_pixel(mask, label_y, label_x):
+    directions_4 = [[0,1],[0,-1],[1,0],[-1,0],[0,0]]
+    directions_8 = [[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,-1],[-1,1],[0,0]]
+
+    for four in directions_4:
+        tmp_y, tmp_x = label_y + four[0], label_x + four[1]
+        for eight in directions_8:
+            mask[tmp_y+eight[0]][tmp_x+eight[1]] = 1
+    
+    return mask
 
 def load_data(args):
     print("---------- Starting Loading Dataset ----------")
@@ -87,7 +105,7 @@ def load_data(args):
     train_transform = A.Compose([
         A.Resize(height=IMAGE_RESIZE, width=IMAGE_RESIZE),
         A.Rotate(limit=15, p=1.0),
-        A.HorizontalFlip(p=0.5),
+        # A.HorizontalFlip(p=0.5),
         # A.VerticalFlip(p=0.1),
         A.Normalize(
             mean=(0.485, 0.456, 0.406),
