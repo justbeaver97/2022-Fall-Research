@@ -36,10 +36,13 @@ def main(args):
     train_loader, val_loader = load_data(args)
     DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
     print(f'Torch is running on {DEVICE}')
-    
+
     ## load model & set loss function, optimizer, ...
     model = get_model(args, DEVICE)
-    loss_fn = nn.BCEWithLogitsLoss()
+
+    # loss_fn = nn.BCEWithLogitsLoss()
+    loss_fn = nn.MSELoss()
+
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
     scaler = torch.cuda.amp.GradScaler()
 
@@ -73,20 +76,20 @@ if __name__ == '__main__':
 
     parser.add_argument('--image_path', type=str, default="./overlay_only", help='path to save overlaid data')
     parser.add_argument('--image_resize', type=int, default=512, help='image resize value')
-    parser.add_argument('--batch_size', type=int, default=1, help='batch size')
+    parser.add_argument('--batch_size', type=int, default=12, help='batch size')
     
     ## hyperparameters - model
     parser.add_argument('--seed', type=int, default=2022, help='seed customization for result reproduction')
     parser.add_argument('--input_channel', type=int, default=3, help='input channel size for UNet')
     parser.add_argument('--output_channel', type=int, default=1, help='output channel size for UNet')
-    parser.add_argument('--lr', '--learning_rate', type=int, default=1e-4, help='learning rate')
+    parser.add_argument('--lr', '--learning_rate', type=float, default=1e-4, help='learning rate')
     parser.add_argument('--epochs', type=int, default=1000, help='number of epochs')
     parser.add_argument('--patience', type=int, default=10, help='early stopping patience')
 
     ## hyperparameters - results
 
     ## wandb
-    parser.add_argument('--wandb', type=bool, default=False, help='whether to use wandb or not')
+    parser.add_argument('--wandb', type=bool, default=True, help='whether to use wandb or not')
     parser.add_argument('--wandb_project', type=str, default="joint-replacement", help='wandb project name')
     parser.add_argument('--wandb_entity', type=str, default="yehyun-suh", help='wandb entity name')
     parser.add_argument('--wandb_name', type=str, default="temporary", help='wandb name')

@@ -9,11 +9,12 @@ import torchvision
 import numpy as np
 
 from tqdm import tqdm
+from spatial_mean import SpatialMean_CHAN
 from log import log_results
 
 
 def check_accuracy(loader, model, device):
-    print("Starting Validation")
+    print("=====Starting Validation=====")
 
     num_correct, num_pixels = 0, 0
     num_labels, num_labels_correct = 0, 0
@@ -55,8 +56,8 @@ def check_accuracy(loader, model, device):
     label_accuracy = num_labels_correct/(num_labels+1e-8)
     whole_image_accuracy = num_correct/num_pixels*100
 
-    print(f"Number of pixels predicted as label: {predict_as_label}")
-    print(f"Got {num_labels_correct}/{num_labels} with acc {label_accuracy:.2f}")
+    # print(f"Number of pixels predicted as label: {predict_as_label}")
+    # print(f"Got {num_labels_correct}/{num_labels} with acc {label_accuracy:.2f}")
     print(f"Got {num_correct}/{num_pixels} with acc {whole_image_accuracy:.2f}")
 
     # print(f"Dice score: {dice_score/len(loader)}")
@@ -89,7 +90,14 @@ def train_function(args, DEVICE, model, loss_fn, optimizer, scaler, loader):
         # forward
         with torch.cuda.amp.autocast():
             predictions = model(data)
-            loss = loss_fn(predictions, targets)
+            
+            predict_spatial_mean_function = SpatialMean_CHAN(list(predictions.shape))
+            predict_spatial_mean = predict_spatial_mean_function(predictions)
+            targets_spatial_mean_function = SpatialMean_CHAN(list(targets.shape))
+            targets_spatial_mean = targets_spatial_mean_function(targets)
+            loss = loss_fn(predict_spatial_mean, targets_spatial_mean)
+
+            # loss = loss_fn(predictions, targets)
 
         # backward
         optimizer.zero_grad()
@@ -111,10 +119,8 @@ def train(args, DEVICE, model, loss_fn, optimizer, scaler, train_loader, val_loa
 
     for epoch in range(args.epochs):
         print(f"\nRunning Epoch # {epoch}")
-        loss = train_function(args, DEVICE, model, loss_fn,
-                              optimizer, scaler, train_loader)
-        label_accuracy, segmentation_accuracy, predict_as_label = check_accuracy(
-            val_loader, model, device=DEVICE)
+        loss = train_function(args, DEVICE, model, loss_fn,optimizer, scaler, train_loader)
+        label_accuracy, segmentation_accuracy, predict_as_label = check_accuracy(val_loader, model, device=DEVICE)
 
         if args.wandb:
             log_results(args, loss, label_accuracy,
@@ -128,8 +134,9 @@ def train(args, DEVICE, model, loss_fn, optimizer, scaler, train_loader, val_loa
             torch.save(checkpoint, f"./results/UNet_Epoch_{epoch}.pth")
         pth_save_point += 1
 
+        print("Current loss ", loss)
         if best_loss > loss:
-            print("New best model with loss ", loss)
+            print("=====New best model=====")
             torch.save(checkpoint, f"./results/best.pth")
 
             # print some examples to a folder
@@ -142,6 +149,6 @@ def train(args, DEVICE, model, loss_fn, optimizer, scaler, train_loader, val_loa
         else:
             count += 1
 
-        if count == args.patience:
-            print("Early Stopping")
-            break
+        # if count == args.patience:
+        #     print("Early Stopping")
+        #     break
