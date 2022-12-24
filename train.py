@@ -7,6 +7,8 @@ import os
 import torch
 import torchvision
 import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 from tqdm import tqdm
 from spatial_mean import SpatialMean_CHAN
@@ -66,17 +68,82 @@ def check_accuracy(loader, model, device):
     return label_accuracy, whole_image_accuracy, predict_as_label
 
 
-def save_predictions_as_imgs(loader, model, folder="saved_images", device="cuda"):
+def save_predictions_as_imgs(loader, model, epoch, folder="plot_results", device="cuda"):
     model.eval()
+
+    if not os.path.exists(f'{folder}'):
+        os.mkdir(f'{folder}')
+
     for idx, (x, y) in enumerate(loader):
         x = x.to(device=device)
         with torch.no_grad():
             preds = torch.sigmoid(model(x))
-            preds = (preds > 0.5).float()
-        torchvision.utils.save_image(preds, f"{folder}/pred_{idx}.png")
-        torchvision.utils.save_image(y.unsqueeze(1), f"{folder}{idx}.png")
+            # print(preds[0][0][0])
+            printsave(preds[0][0][0])
+            # preds_binary = (preds > 0.5).float()
+            # print(preds_binary[0][0][0])
+        # exit()
+        Loss = "LogLoss"
+
+        ## reference: 
+        ## https://stackoverflow.com/questions/53467215/convert-pytorch-cuda-tensor-to-numpy-array
+        ## https://stackoverflow.com/questions/33282368/plotting-a-2d-heatmap 
+        # sns_pp = sns.heatmap(preds[0][0].detach().cpu().numpy())
+        # sns_pp.savefig(f'./plot_results/tmp_{epoch}.png', dpi=300)
+
+        channel_0 = preds[0][0].detach().cpu().numpy()
+        channel_1 = preds[0][1].detach().cpu().numpy()
+        channel_2 = preds[0][2].detach().cpu().numpy()
+        channel_3 = preds[0][3].detach().cpu().numpy()
+        channel_4 = preds[0][4].detach().cpu().numpy()
+        channel_5 = preds[0][5].detach().cpu().numpy()
+
+        if not os.path.exists('./plot_results/tmp0'):
+            os.mkdir(f'./plot_results/tmp0')
+        plt.imshow(channel_0, cmap='hot', interpolation='nearest')
+        plt.savefig(f'./plot_results/tmp0/tmp_{epoch}_0.png')
+
+        if not os.path.exists('./plot_results/tmp1'):
+            os.mkdir(f'./plot_results/tmp1')
+        plt.imshow(channel_1, cmap='hot', interpolation='nearest')
+        plt.savefig(f'./plot_results/tmp1/tmp_{epoch}_1.png')
+
+        if not os.path.exists('./plot_results/tmp2'):
+            os.mkdir(f'./plot_results/tmp2')
+        plt.imshow(channel_2, cmap='hot', interpolation='nearest')
+        plt.savefig(f'./plot_results/tmp2/tmp_{epoch}_2.png')
+
+        if not os.path.exists('./plot_results/tmp3'):
+            os.mkdir(f'./plot_results/tmp3')
+        plt.imshow(channel_3, cmap='hot', interpolation='nearest')
+        plt.savefig(f'./plot_results/tmp3/tmp_{epoch}_3.png')
+
+        if not os.path.exists('./plot_results/tmp4'):
+            os.mkdir(f'./plot_results/tmp4')
+        plt.imshow(channel_4, cmap='hot', interpolation='nearest')
+        plt.savefig(f'./plot_results/tmp4/tmp_{epoch}_4.png')
+
+        if not os.path.exists('./plot_results/tmp5'):
+            os.mkdir(f'./plot_results/tmp5')
+        plt.imshow(channel_5, cmap='hot', interpolation='nearest')
+        plt.savefig(f'./plot_results/tmp5/tmp_{epoch}_5.png')
+
+        # torchvision.utils.save_image(preds_binary, f"{folder}/pred_{epoch}_{idx}.png")
+        # torchvision.utils.save_image(preds_binary[0][0], f"{folder}/{Loss}_tmp_epoch{epoch}_0.png")
+        # torchvision.utils.save_image(preds_binary[0][1], f"{folder}/{Loss}_tmp_epoch{epoch}_1.png")
+        # torchvision.utils.save_image(preds_binary[0][2], f"{folder}/{Loss}_tmp_epoch{epoch}_2.png")
+        # torchvision.utils.save_image(preds_binary[0][3], f"{folder}/{Loss}_tmp_epoch{epoch}_3.png")
+        # torchvision.utils.save_image(preds_binary[0][4], f"{folder}/{Loss}_tmp_epoch{epoch}_4.png")
+        # torchvision.utils.save_image(preds_binary[0][5], f"{folder}/{Loss}_tmp_epoch{epoch}_5.png")
+
+        # torchvision.utils.save_image(y.unsqueeze(1), f"{folder}/{idx}.png")
+        break
 
     model.train()
+
+def printsave(*a):
+    file = open('error_log.txt','a')
+    print(*a,file=file)
 
 
 def train_function(args, DEVICE, model, loss_fn, optimizer, scaler, loader):
@@ -119,33 +186,29 @@ def train(args, DEVICE, model, loss_fn, optimizer, scaler, train_loader, val_loa
 
     for epoch in range(args.epochs):
         print(f"\nRunning Epoch # {epoch}")
+
         loss = train_function(args, DEVICE, model, loss_fn,optimizer, scaler, train_loader)
         label_accuracy, segmentation_accuracy, predict_as_label = check_accuracy(val_loader, model, device=DEVICE)
 
         if args.wandb:
-            log_results(args, loss, label_accuracy,
-                        segmentation_accuracy, predict_as_label)
+            log_results(args, loss, label_accuracy, segmentation_accuracy, predict_as_label)
 
         checkpoint = {
             "state_dict": model.state_dict(),
             "optimizer":  optimizer.state_dict(),
         }
-        if pth_save_point % 5 == 0:
+
+        if pth_save_point % 5 == 0: 
             torch.save(checkpoint, f"./results/UNet_Epoch_{epoch}.pth")
         pth_save_point += 1
 
         print("Current loss ", loss)
         if best_loss > loss:
             print("=====New best model=====")
+
             torch.save(checkpoint, f"./results/best.pth")
-
-            # print some examples to a folder
-            # save_predictions_as_imgs(
-            #     val_loader, model, folder='./results', device=DEVICE
-            # )
-
-            best_loss = loss
-            count = 0
+            save_predictions_as_imgs(val_loader, model, epoch, folder='./plot_results', device=DEVICE)
+            best_loss, count = loss, 0
         else:
             count += 1
 
