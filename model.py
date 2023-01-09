@@ -1,6 +1,13 @@
+"""
+reference:
+    https://www.kaggle.com/code/balraj98/unet-with-pretrained-resnet50-encoder-pytorch
+
+"""
+
 import torch
 import torch.nn as nn
 import torchvision.transforms.functional as TF
+import segmentation_models_pytorch as smp
 from torch.nn import functional as F
 
 class DoubleConv(nn.Module):
@@ -69,3 +76,25 @@ class UNET(nn.Module):
 
 def get_model(args, DEVICE):
     return UNET(in_channels=3, out_channels=6).to(DEVICE)
+
+
+def get_pretrained_model(DEVICE):
+    ENCODER = 'resnet101'
+    ENCODER_WEIGHTS = 'imagenet'
+    CLASSES = [
+        'top','upper middle left','upper middle center',
+        'lower middle left', 'lower middle center', 'bottom'
+    ]
+    ACTIVATION = 'sigmoid' # could be None for logits or 'softmax2d' for multiclass segmentation
+
+    # create segmentation model with pretrained encoder
+    model = smp.Unet(
+        encoder_name=ENCODER, 
+        encoder_weights=ENCODER_WEIGHTS, 
+        classes=len(CLASSES), 
+        activation=ACTIVATION,
+    )
+
+    # preprocessing_fn = smp.encoders.get_preprocessing_fn(ENCODER, ENCODER_WEIGHTS)
+
+    return model.to(DEVICE)
