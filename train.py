@@ -146,7 +146,7 @@ def printsave(*a):
     print(*a,file=file)
 
 
-def train_function(args, DEVICE, model, loss_fn, optimizer, scaler, loader):
+def train_function(args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, optimizer, scaler, loader):
     loop = tqdm(loader)
 
     for batch_idx, (data, targets) in enumerate(loop):
@@ -157,14 +157,23 @@ def train_function(args, DEVICE, model, loss_fn, optimizer, scaler, loader):
         # forward
         with torch.cuda.amp.autocast():
             predictions = model(data)
-            
-            predict_spatial_mean_function = SpatialMean_CHAN(list(predictions.shape))
-            predict_spatial_mean = predict_spatial_mean_function(predictions)
-            targets_spatial_mean_function = SpatialMean_CHAN(list(targets.shape))
-            targets_spatial_mean = targets_spatial_mean_function(targets)
-            loss = loss_fn(predict_spatial_mean, targets_spatial_mean)
 
-            # loss = loss_fn(predictions, targets)
+            # calculate log loss with pixel value
+            loss_pixel = loss_fn_pixel(predictions, targets)
+
+            # calculate mse loss with spatial mean value
+            predict_spatial_mean_function = SpatialMean_CHAN(list(predictions.shape[1:]))
+            predict_spatial_mean = predict_spatial_mean_function(predictions)
+            targets_spatial_mean_function = SpatialMean_CHAN(list(targets.shape[1:]))
+            targets_spatial_mean = targets_spatial_mean_function(targets)
+            loss_geometry = loss_fn_geometry(predict_spatial_mean, targets_spatial_mean)
+
+            # add two losses
+            loss = loss_pixel + loss_geometry 
+            # print(loss_pixel)
+            # print(loss_geometry)
+            # print(loss)
+            # exit()
 
         # backward
         optimizer.zero_grad()
@@ -175,10 +184,10 @@ def train_function(args, DEVICE, model, loss_fn, optimizer, scaler, loader):
         # update tqdm loop
         loop.set_postfix(loss=loss.item())
 
-    return loss.item()
+    return loss.item(), loss_pixel.item(), loss_geometry.item()
 
 
-def train(args, DEVICE, model, loss_fn, optimizer, scaler, train_loader, val_loader):
+def train(args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, optimizer, scaler, train_loader, val_loader):
     count, pth_save_point, best_loss = 0, 0, np.inf
 
     if not os.path.exists('./results'):
@@ -187,11 +196,12 @@ def train(args, DEVICE, model, loss_fn, optimizer, scaler, train_loader, val_loa
     for epoch in range(args.epochs):
         print(f"\nRunning Epoch # {epoch}")
 
-        loss = train_function(args, DEVICE, model, loss_fn,optimizer, scaler, train_loader)
+        loss, loss_pixel, loss_geometry = train_function(args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, optimizer, scaler, train_loader)
         label_accuracy, segmentation_accuracy, predict_as_label = check_accuracy(val_loader, model, device=DEVICE)
 
         if args.wandb:
-            log_results(args, loss, label_accuracy, segmentation_accuracy, predict_as_label)
+            # log_results(args, loss, label_accuracy, segmentation_accuracy, predict_as_label)
+            log_results(args, loss, loss_pixel, loss_geometry, label_accuracy, segmentation_accuracy, predict_as_label)
 
         checkpoint = {
             "state_dict": model.state_dict(),
@@ -205,7 +215,6 @@ def train(args, DEVICE, model, loss_fn, optimizer, scaler, train_loader, val_loa
         print("Current loss ", loss)
         if best_loss > loss:
             print("=====New best model=====")
-
             torch.save(checkpoint, f"./results/best.pth")
             save_predictions_as_imgs(val_loader, model, epoch, folder='./plot_results', device=DEVICE)
             best_loss, count = loss, 0

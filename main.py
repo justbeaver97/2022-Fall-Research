@@ -5,7 +5,7 @@ import torch.optim as optim
 
 import preprocess
 from dataset import load_data, create_dataset
-from model import get_model
+from model import get_model, get_pretrained_model
 from train import train
 from log import initiate_wandb
 
@@ -26,7 +26,7 @@ def main(args):
     ## pad the original image & get annotation coordintaes
     if args.pad_image:
         preprocess.pad_original_image(args)
-        ## annotation should be manually done by using ./create data/select_point.py
+        ## after padding, annotation should be manually done by using ./create data/select_point.py
 
     ## create dataset from padded images & annotation text file
     if args.create_dataset: 
@@ -38,16 +38,17 @@ def main(args):
     print(f'Torch is running on {DEVICE}')
 
     ## load model & set loss function, optimizer, ...
-    model = get_model(args, DEVICE)
+    # model = get_model(args, DEVICE)
+    model = get_pretrained_model(DEVICE)
 
-    # loss_fn = nn.BCEWithLogitsLoss()
-    loss_fn = nn.MSELoss()
+    loss_fn_pixel = nn.BCEWithLogitsLoss()
+    loss_fn_geometry = nn.MSELoss()
 
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
     scaler = torch.cuda.amp.GradScaler()
 
     ## train model
-    train(args, DEVICE, model, loss_fn, optimizer, scaler, train_loader, val_loader)
+    train(args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, optimizer, scaler, train_loader, val_loader)
 
 
 
