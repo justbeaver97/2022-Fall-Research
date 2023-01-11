@@ -9,11 +9,13 @@ from albumentations.pytorch import ToTensorV2
 from torch.utils.data import Dataset, DataLoader
 from PIL import Image
 from tqdm import tqdm
+from scipy import ndimage
 
 
 class CustomDataset(Dataset):
     def __init__(self, df, args, transform=None):
         super().__init__()
+        self.args = args
         self.df = df.reset_index()
         self.image_dir = self.df["image"]
         self.label_0_y, self.label_0_x = self.df['label_0_y'], self.df['label_0_x']
@@ -58,12 +60,12 @@ class CustomDataset(Dataset):
         # mask4[label_4_y, label_4_x] = 1.0
         # mask5[label_5_y, label_5_x] = 1.0
 
-        mask0 = dilate_pixel(mask0, label_0_y, label_0_x)
-        mask1 = dilate_pixel(mask1, label_1_y, label_1_x)
-        mask2 = dilate_pixel(mask2, label_2_y, label_2_x)
-        mask3 = dilate_pixel(mask3, label_3_y, label_3_x)
-        mask4 = dilate_pixel(mask4, label_4_y, label_4_x)
-        mask5 = dilate_pixel(mask5, label_5_y, label_5_x)
+        mask0 = dilate_pixel(mask0, label_0_y, label_0_x, self.args)
+        mask1 = dilate_pixel(mask1, label_1_y, label_1_x, self.args)
+        mask2 = dilate_pixel(mask2, label_2_y, label_2_x, self.args)
+        mask3 = dilate_pixel(mask3, label_3_y, label_3_x, self.args)
+        mask4 = dilate_pixel(mask4, label_4_y, label_4_x, self.args)
+        mask5 = dilate_pixel(mask5, label_5_y, label_5_x, self.args)
 
         if self.transform:
             augmentations = self.transform(
@@ -81,16 +83,22 @@ class CustomDataset(Dataset):
 
         return image, masks
 
-def dilate_pixel(mask, label_y, label_x):
-    directions_4 = [[0,1],[0,-1],[1,0],[-1,0],[0,0]]
-    directions_8 = [[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,-1],[-1,1],[0,0]]
+def dilate_pixel(mask, label_y, label_x, args):
+    # directions_4 = [[0,1],[0,-1],[1,0],[-1,0],[0,0]]
+    # directions_8 = [[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,-1],[-1,1],[0,0]]
 
-    for four in directions_4:
-        tmp_y, tmp_x = label_y + four[0], label_x + four[1]
-        for eight in directions_8:
-            mask[tmp_y+eight[0]][tmp_x+eight[1]] = 1
+    # for four in directions_4:
+    #     tmp_y, tmp_x = label_y + four[0], label_x + four[1]
+    #     for eight in directions_8:
+    #         mask[tmp_y+eight[0]][tmp_x+eight[1]] = 1
     
-    return mask
+    # return mask
+
+    mask[label_y][label_x] = 1.0
+    struct = ndimage.generate_binary_structure(2, 1)
+    dilated_mask = ndimage.binary_dilation(mask, structure=struct, iterations=args.dilate).astype(mask.dtype)
+
+    return dilated_mask
 
 def load_data(args):
     print("---------- Starting Loading Dataset ----------")
@@ -145,6 +153,11 @@ def load_data(args):
     return train_loader, val_loader
 
 # def create_dataset(args):
+#     """
+#     Annotation Dataset Approach 1
+#     After getting the annotation points from original image, 
+#     make an annotation image that has exactly the same size as the original image
+#     """
 #     print("---------- Starting Creating Dataset ----------")
 
 #     label_coordinate_list = []
@@ -198,6 +211,11 @@ def load_data(args):
 
 
 def create_dataset(args):
+    """
+    Annotation Dataset Approach 2
+    After getting the annotation points from original image, 
+    create a csv file that resizes the values into resized image size
+    """
     print("---------- Starting Creating Dataset ----------")
     annotation_file = f'{args.annotation_text_path}/{args.annotation_text_name}'
 

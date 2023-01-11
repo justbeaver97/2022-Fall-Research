@@ -74,6 +74,7 @@ if __name__ == '__main__':
     parser.add_argument('--annotation_text_path', type=str, default="./data/annotation_text_files", help='annotation text file path')
     parser.add_argument('--annotation_text_name', type=str, default="annotation.txt", help='annotation text file name')
     parser.add_argument('--dataset_split', type=int, default=9, help='dataset split ratio')
+    parser.add_argument('--dilate', type=int, default=2, help='dilate iteration')
 
     parser.add_argument('--image_path', type=str, default="./overlay_only", help='path to save overlaid data')
     parser.add_argument('--image_resize', type=int, default=512, help='image resize value')
