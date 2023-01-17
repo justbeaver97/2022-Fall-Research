@@ -64,7 +64,7 @@ class SpatialMean_CHAN(nn.Module):
         self.n_chan = input_shape[0]
 
         for idx, in_shape in enumerate(self.input_shape_nb_nc):
-            coord_idx_tensor = torch.range(0, in_shape-1)
+            coord_idx_tensor = torch.arange(0, in_shape)
             coord_idx_tensor = torch.reshape(
                 coord_idx_tensor,
                 [in_shape] + [1]*(len(self.input_shape_nb_nc)-1)
@@ -163,6 +163,3 @@ class SpatialMean_CHAN(nn.Module):
         for idx in range(len(self.coord_idx_list)):
             self.coord_idx_list[idx].to(*args, **kwargs)
         return self
-
-def get_loss(shape):
-    return SpatialMean_CHAN(shape)
