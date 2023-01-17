@@ -68,7 +68,7 @@ if __name__ == '__main__':
     parser.add_argument('--padded_image', type=str, default="./data/padded_image", help='path to save padded data')
 
     ## hyperparameters - data
-    parser.add_argument('--create_dataset', type=bool, default=False, help='whether to create dataset or not')
+    parser.add_argument('--create_dataset', type=bool, default=True, help='whether to create dataset or not')
     parser.add_argument('--dataset_path', type=str, default="./data/dataset", help='dataset path')
     parser.add_argument('--dataset_csv_path', type=str, default="./xlsx/dataset.csv", help='dataset excel file path')
     parser.add_argument('--annotation_text_path', type=str, default="./data/annotation_text_files", help='annotation text file path')
@@ -87,6 +87,9 @@ if __name__ == '__main__':
     parser.add_argument('--lr', '--learning_rate', type=float, default=1e-4, help='learning rate')
     parser.add_argument('--epochs', type=int, default=1000, help='number of epochs')
     parser.add_argument('--patience', type=int, default=10, help='early stopping patience')
+    parser.add_argument('--loss_weight', type=int, default=1, help='weight of the loss function')
+    parser.add_argument('--only_pixel', type=bool, default=False, help='whether to use only pixel loss')
+    parser.add_argument('--only_geom', type=bool, default=False, help='whether to use only geometry loss')
 
     ## hyperparameters - results
 
