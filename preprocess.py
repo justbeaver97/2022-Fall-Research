@@ -213,7 +213,7 @@ def printsave(*a):
  
 
 def dicom2png(dicom_lists, args):
-    if not os.path.exists(f'{args.save_dicom_to_png_pathpath}'):         os.mkdir(f'{args.dicom_to_png_path}')
+    if not os.path.exists(f'{args.dicom_to_png_path}'):                  os.mkdir(f'{args.dicom_to_png_path}')
     if not os.path.exists(f'{args.dicom_to_png_path}/original_image'):   os.mkdir(f'{args.dicom_to_png_path}/original_image')
     if not os.path.exists(f'{args.dicom_to_png_path}/annotation_image'): os.mkdir(f'{args.dicom_to_png_path}/annotation_image')
     count = 0
