@@ -112,7 +112,7 @@ def load_data(args):
 
     train_transform = A.Compose([
         A.Resize(height=IMAGE_RESIZE, width=IMAGE_RESIZE),
-        A.Rotate(limit=15, p=1.0),
+        # A.Rotate(limit=15, p=1.0),
         # A.HorizontalFlip(p=0.5),
         # A.VerticalFlip(p=0.1),
         A.Normalize(
