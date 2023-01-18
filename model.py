@@ -72,13 +72,19 @@ class UNET(nn.Module):
             concat_skip = torch.cat((skip_connection, x), dim=1)
             x = self.ups[idx+1](concat_skip)
 
+
+        ## need to do a sigmoid after the UNet -> in train.py
         return self.final_conv(x)
 
+
 def get_model(args, DEVICE):
+    print("---------- Loading Model Not Pretrained ----------")
     return UNET(in_channels=3, out_channels=6).to(DEVICE)
 
 
 def get_pretrained_model(DEVICE):
+    print("---------- Loading Model Pretrained ----------")
+
     ENCODER = 'resnet101'
     ENCODER_WEIGHTS = 'imagenet'
     CLASSES = [
