@@ -11,9 +11,7 @@ from log import initiate_wandb
 
 def main(args):
     preprocess.customize_seed(args.seed)
-
-    if args.wandb:
-        initiate_wandb(args)
+    initiate_wandb(args)
 
     ## data preprocessing
     if args.data_preprocessing:
@@ -27,6 +25,7 @@ def main(args):
     if args.pad_image:
         preprocess.pad_original_image(args)
         ## after padding, annotation should be manually done by using ./create data/select_point.py
+        exit()
 
     ## create dataset from padded images & annotation text file
     if args.create_dataset: 
@@ -38,8 +37,10 @@ def main(args):
     print(f'Torch is running on {DEVICE}')
 
     ## load model & set loss function, optimizer, ...
-    # model = get_model(args, DEVICE)
-    model = get_pretrained_model(DEVICE)
+    if args.pretrained:
+        model = get_pretrained_model(DEVICE)
+    else:
+        model = get_model(args, DEVICE)
 
     loss_fn_pixel = nn.BCEWithLogitsLoss()
     loss_fn_geometry = nn.MSELoss()
@@ -55,20 +56,28 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
+    ## boolean arguments stored false
+    parser.add_argument('--data_preprocessing', action='store_true', help='whether to do data preprocessing or not')
+    parser.add_argument('--pad_image', action='store_true', help='whether to pad the original image')
+    parser.add_argument('--create_dataset', action='store_true', help='whether to create dataset or not')
+    parser.add_argument('--only_pixel', action='store_true', help='whether to use only pixel loss')
+    parser.add_argument('--only_geom', action='store_true', help='whether to use only geometry loss')
+
+    ## boolean arguments stored true
+    parser.add_argument('--pretrained', action='store_true', help='whether to pretrained model')
+    parser.add_argument('--wandb', action='store_true', help='whether to use wandb or not')
+
     ## get dataset
     parser.add_argument('--excel_path', type=str, default="./xlsx/dataset.xlsx", help='path to dataset excel file')
 
     ## data preprocessing
-    parser.add_argument('--data_preprocessing', type=bool, default=False, help='whether to do data preprocessing or not')
     parser.add_argument('--dicom_data_path', type=str, default="./data/dicom_data", help='path to the dicom dataset')
     parser.add_argument('--dicom_to_png_path', type=str, default="./data/dicom_to_png", help='path to save dicom to png preprocessed data')
     parser.add_argument('--overlaid_image', type=str, default="./data/overlay_image_to_label", help='path to all the data from overlaying')
     parser.add_argument('--overlaid_image_only', type=str, default="./data/overlay_only", help='path to save overlaid data')
-    parser.add_argument('--pad_image', type=bool, default=False, help='whether to pad the original image')
     parser.add_argument('--padded_image', type=str, default="./data/padded_image", help='path to save padded data')
 
     ## hyperparameters - data
-    parser.add_argument('--create_dataset', type=bool, default=True, help='whether to create dataset or not')
     parser.add_argument('--dataset_path', type=str, default="./data/dataset", help='dataset path')
     parser.add_argument('--dataset_csv_path', type=str, default="./xlsx/dataset.csv", help='dataset excel file path')
     parser.add_argument('--annotation_text_path', type=str, default="./data/annotation_text_files", help='annotation text file path')
@@ -84,17 +93,15 @@ if __name__ == '__main__':
     parser.add_argument('--seed', type=int, default=2022, help='seed customization for result reproduction')
     parser.add_argument('--input_channel', type=int, default=3, help='input channel size for UNet')
     parser.add_argument('--output_channel', type=int, default=1, help='output channel size for UNet')
-    parser.add_argument('--lr', '--learning_rate', type=float, default=1e-4, help='learning rate')
+    parser.add_argument('--lr', '--learning_rate', type=float, default=1e-5, help='learning rate')
     parser.add_argument('--epochs', type=int, default=1000, help='number of epochs')
     parser.add_argument('--patience', type=int, default=10, help='early stopping patience')
     parser.add_argument('--loss_weight', type=int, default=1, help='weight of the loss function')
-    parser.add_argument('--only_pixel', type=bool, default=False, help='whether to use only pixel loss')
-    parser.add_argument('--only_geom', type=bool, default=False, help='whether to use only geometry loss')
 
     ## hyperparameters - results
+    parser.add_argument('--threshold', type=float, default=0.5, help='threshold for binary prediction')
 
     ## wandb
-    parser.add_argument('--wandb', type=bool, default=True, help='whether to use wandb or not')
     parser.add_argument('--wandb_project', type=str, default="joint-replacement", help='wandb project name')
     parser.add_argument('--wandb_entity', type=str, default="yehyun-suh", help='wandb entity name')
     parser.add_argument('--wandb_name', type=str, default="temporary", help='wandb name')
