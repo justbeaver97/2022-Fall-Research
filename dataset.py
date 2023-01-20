@@ -1,3 +1,11 @@
+"""
+reference:
+    mask augmentation:
+        https://albumentations.ai/docs/getting_started/mask_augmentation/
+        https://medium.com/pytorch/multi-target-in-albumentations-16a777e9006e
+"""
+
+
 import cv2
 import csv
 import torch
@@ -43,22 +51,12 @@ class CustomDataset(Dataset):
         image_path = f'{self.dataset_path}/{image_dir}'
         image = np.array(Image.open(image_path).convert("RGB"))
 
-        # reference
-        # https://albumentations.ai/docs/getting_started/mask_augmentation/
-        # https://medium.com/pytorch/multi-target-in-albumentations-16a777e9006e
         mask0 = np.zeros([self.image_resize, self.image_resize])
         mask1 = np.zeros([self.image_resize, self.image_resize])
         mask2 = np.zeros([self.image_resize, self.image_resize])
         mask3 = np.zeros([self.image_resize, self.image_resize])
         mask4 = np.zeros([self.image_resize, self.image_resize])
         mask5 = np.zeros([self.image_resize, self.image_resize])
-
-        # mask0[label_0_y, label_0_x] = 1.0
-        # mask1[label_1_y, label_1_x] = 1.0
-        # mask2[label_2_y, label_2_x] = 1.0
-        # mask3[label_3_y, label_3_x] = 1.0
-        # mask4[label_4_y, label_4_x] = 1.0
-        # mask5[label_5_y, label_5_x] = 1.0
 
         mask0 = dilate_pixel(mask0, label_0_y, label_0_x, self.args)
         mask1 = dilate_pixel(mask1, label_1_y, label_1_x, self.args)
@@ -84,16 +82,6 @@ class CustomDataset(Dataset):
         return image, masks
 
 def dilate_pixel(mask, label_y, label_x, args):
-    # directions_4 = [[0,1],[0,-1],[1,0],[-1,0],[0,0]]
-    # directions_8 = [[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,-1],[-1,1],[0,0]]
-
-    # for four in directions_4:
-    #     tmp_y, tmp_x = label_y + four[0], label_x + four[1]
-    #     for eight in directions_8:
-    #         mask[tmp_y+eight[0]][tmp_x+eight[1]] = 1
-    
-    # return mask
-
     mask[label_y][label_x] = 1.0
     struct = ndimage.generate_binary_structure(2, 1)
     dilated_mask = ndimage.binary_dilation(mask, structure=struct, iterations=args.dilate).astype(mask.dtype)
@@ -110,11 +98,12 @@ def load_data(args):
     train_df = dataset_df[:split_point]
     val_df = dataset_df[split_point:]
 
+    ## other augmentations that I can try
+    ## InvertImg, pixeldropout
     train_transform = A.Compose([
         A.Resize(height=IMAGE_RESIZE, width=IMAGE_RESIZE),
-        # A.Rotate(limit=15, p=1.0),
-        # A.HorizontalFlip(p=0.5),
-        # A.VerticalFlip(p=0.1),
+        A.Rotate(limit=15, p=0.5),
+        A.HorizontalFlip(p=0.5),
         A.Normalize(
             mean=(0.485, 0.456, 0.406),
             std=(0.229, 0.224, 0.225),
