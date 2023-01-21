@@ -94,33 +94,29 @@ def save_heatmap(preds, preds_binary, args, epoch):
 
 
 def save_label_image(label_tensor, args):
-    channel_0 = label_tensor[0][0].detach().cpu().numpy()
-    channel_1 = label_tensor[0][1].detach().cpu().numpy()
-    channel_2 = label_tensor[0][2].detach().cpu().numpy()
-    channel_3 = label_tensor[0][3].detach().cpu().numpy()
-    channel_4 = label_tensor[0][4].detach().cpu().numpy()
-    channel_5 = label_tensor[0][5].detach().cpu().numpy()
-
     if not os.path.exists(f'./plot_results/{args.wandb_name}/annotation'):
         os.mkdir(f'./plot_results/{args.wandb_name}/annotation')
-
-    plt.imshow(channel_0, cmap='hot', interpolation='nearest')
-    plt.savefig(f'./plot_results/{args.wandb_name}/annotation/label0.png')
-    plt.imshow(channel_1, cmap='hot', interpolation='nearest')
-    plt.savefig(f'./plot_results/{args.wandb_name}/annotation/label1.png')
-    plt.imshow(channel_2, cmap='hot', interpolation='nearest')
-    plt.savefig(f'./plot_results/{args.wandb_name}/annotation/label2.png')
-    plt.imshow(channel_3, cmap='hot', interpolation='nearest')
-    plt.savefig(f'./plot_results/{args.wandb_name}/annotation/label3.png')
-    plt.imshow(channel_4, cmap='hot', interpolation='nearest')
-    plt.savefig(f'./plot_results/{args.wandb_name}/annotation/label4.png')
-    plt.imshow(channel_5, cmap='hot', interpolation='nearest')
-    plt.savefig(f'./plot_results/{args.wandb_name}/annotation/label5.png')
+    
+    for i in range(6):
+        plt.imshow(label_tensor[0][i].detach().cpu().numpy(), cmap='hot', interpolation='nearest')
+        plt.savefig(f'./plot_results/{args.wandb_name}/annotation/label{i}.png')
 
 
-def printsave(*a):
-    file = open('tmp/error_log.txt','a')
-    print(*a,file=file)
+def save_overlaid_image(args, epoch, original_data, predicted_label):
+    if not os.path.exists(f'./plot_results/{args.wandb_name}/overlaid'):
+        os.mkdir(f'./plot_results/{args.wandb_name}/overlaid')
+
+    for i in range(6):
+        if not os.path.exists(f'./plot_results/{args.wandb_name}/overlaid/label{i}'):
+            os.mkdir(f'./plot_results/{args.wandb_name}/overlaid/label{i}')
+        torchvision.utils.save_image(
+            predicted_label[0][i], f'./plot_results/{args.wandb_name}/overlaid/label{i}/epoch_{epoch}.png')
+    
+    torchvision.utils.save_image(original_data, f'./plot_results/{args.wandb_name}/overlaid/original.png')
+
+    ## todo - overlay image
+    
+    exit()
 
 
 def save_predictions_as_images(args, loader, model, epoch, folder="plot_results", device="cuda"):
@@ -145,6 +141,7 @@ def save_predictions_as_images(args, loader, model, epoch, folder="plot_results"
         if epoch == 0: 
             save_label_image(y, args)
         save_heatmap(preds, preds_binary, args, epoch)
+        save_overlaid_image(args, epoch, x, preds_binary)
         break
 
     model.train()
@@ -168,19 +165,19 @@ def check_accuracy(loader, model, args, epoch, device):
             else:               preds = torch.sigmoid(model(x))
             preds = (preds > 0.5).float()
 
-            ## compare only labels
-            if epoch % 25 == 0:
-                for i in range(len(preds[0][0])):
-                    for j in range(len(preds[0][0][i])):
-                        if float(y[0][0][i][j]) == 1.0:
-                            num_labels += 1
-                            if float(preds[0][0][i][j]) == 1.0:
-                                num_labels_correct += 1
+            # ## compare only labels
+            # if epoch % 25 == 0:
+            #     for i in range(len(preds[0][0])):
+            #         for j in range(len(preds[0][0][i])):
+            #             if float(y[0][0][i][j]) == 1.0:
+            #                 num_labels += 1
+            #                 if float(preds[0][0][i][j]) == 1.0:
+            #                     num_labels_correct += 1
 
-                        if float(preds[0][0][i][j]) == 1.0:
-                            predict_as_label += 1
-                            if float(y[0][0][i][j]) == 1.0:
-                                prediction_correct += 1
+            #             if float(preds[0][0][i][j]) == 1.0:
+            #                 predict_as_label += 1
+            #                 if float(y[0][0][i][j]) == 1.0:
+            #                     prediction_correct += 1
 
             # compare whole picture
             num_correct += (preds == y).sum()
@@ -204,3 +201,8 @@ def check_accuracy(loader, model, args, epoch, device):
     model.train()
 
     return label_accuracy, label_accuracy2, whole_image_accuracy, predict_as_label, dice
+
+
+def printsave(*a):
+    file = open('tmp/error_log.txt','a')
+    print(*a,file=file)
