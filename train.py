@@ -14,7 +14,7 @@ from log import log_results, log_results_no_label
 from utility import save_predictions_as_images, check_accuracy, create_directories
 
 
-def train_function(args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, optimizer, scaler, loader):
+def train_function(args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, optimizer, loader):
     loop = tqdm(loader)
 
     for batch_idx, (data, targets, _) in enumerate(loop):
@@ -49,7 +49,7 @@ def train_function(args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, optimiz
     return loss.item(), loss_pixel.item(), loss_geometry.item()
 
 
-def train(args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, optimizer, scaler, train_loader, val_loader):
+def train(args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, optimizer, train_loader, val_loader):
     count, pth_save_point, best_loss = 0, 0, np.inf
     create_directories(args, folder='./plot_results')
     
@@ -57,7 +57,7 @@ def train(args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, optimizer, scale
         print(f"\nRunning Epoch # {epoch}")
 
         loss, loss_pixel, loss_geometry = train_function(
-            args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, optimizer, scaler, train_loader
+            args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, optimizer, train_loader
         )
         label_accuracy, label_accuracy2, segmentation_accuracy, predict_as_label, dice_score = check_accuracy(
             val_loader, model, args, epoch, device=DEVICE

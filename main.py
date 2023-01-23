@@ -46,10 +46,9 @@ def main(args):
     loss_fn_geometry = nn.MSELoss()
 
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
-    scaler = torch.cuda.amp.GradScaler()
 
     ## train model
-    train(args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, optimizer, scaler, train_loader, val_loader)
+    train(args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, optimizer, train_loader, val_loader)
 
 
 
