@@ -79,7 +79,7 @@ class CustomDataset(Dataset):
         # reference: https://sanghyu.tistory.com/85
         masks = torch.stack([mask0, mask1, mask2, mask3, mask4, mask5], dim=0)
 
-        return image, masks
+        return image, masks, image_dir
 
 def dilate_pixel(mask, label_y, label_x, args):
     mask[label_y][label_x] = 1.0

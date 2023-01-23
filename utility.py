@@ -1,147 +1,86 @@
 """
 Reference:
-    heatmap: https://stackoverflow.com/questions/53467215/convert-pytorch-cuda-tensor-to-numpy-array
-             https://stackoverflow.com/questions/33282368/plotting-a-2d-heatmap 
-    tensor to image: https://hello-bryan.tistory.com/429
+    heatmap: 
+        https://stackoverflow.com/questions/53467215/convert-pytorch-cuda-tensor-to-numpy-array
+        https://stackoverflow.com/questions/33282368/plotting-a-2d-heatmap 
+    tensor to image: 
+        https://hello-bryan.tistory.com/429
+    two tensor overlay:
+        https://stackoverflow.com/questions/10640114/overlay-two-same-sized-images-in-python
+        https://discuss.pytorch.org/t/create-heatmap-over-image/41408
+    ValueError: pic should be 2/3 dimensional. Got 4 dimensions:
+        https://stackoverflow.com/questions/64364239/pytorch-error-valueerror-pic-should-be-2-3-dimensional-got-4-dimensions
+    1 channel to 3 channel:
+        https://stackoverflow.com/questions/71957324/is-there-a-pytorch-transform-to-go-from-1-channel-data-to-3-channels    
+    TypeError: Cannot handle this data type: (1, 1, 512), <f4
+        https://stackoverflow.com/questions/60138697/typeerror-cannot-handle-this-data-type-1-1-3-f4
+    KeyError: ((1, 1, 512), '|u1')
+        https://stackoverflow.com/questions/57621092/keyerror-1-1-1280-u1-while-using-pils-image-fromarray-pil
+    permute tensor
+        https://stackoverflow.com/questions/71880540/how-to-change-an-image-which-has-dimensions-512-512-3-to-a-tensor-of-size
 """
 
 import os
 import torch
 import torchvision
+import numpy as np
 import matplotlib.pyplot as plt
+import torchvision.transforms.functional as TF
 
 from tqdm import tqdm
+from PIL import Image
 
 
 def save_heatmap(preds, preds_binary, args, epoch):
-    channel_0, channel_1 = preds[0][0].detach().cpu().numpy(), preds[0][1].detach().cpu().numpy()
-    channel_2, channel_3 = preds[0][2].detach().cpu().numpy(), preds[0][3].detach().cpu().numpy()
-    channel_4, channel_5 = preds[0][4].detach().cpu().numpy(), preds[0][5].detach().cpu().numpy()
-
     if args.only_pixel and epoch % 50 == 0:
-        if not os.path.exists(f'./plot_results/{args.wandb_name}/label0'):
-            os.mkdir(f'./plot_results/{args.wandb_name}/label0')
-        plt.imshow(channel_0, cmap='hot', interpolation='nearest')
-        plt.savefig(f'./plot_results/{args.wandb_name}/label0/epoch_{epoch}_heatmap.png')
-        torchvision.utils.save_image(preds_binary[0][0], f'./plot_results/{args.wandb_name}/label0/epoch_{epoch}.png')
-
-        if not os.path.exists(f'./plot_results/{args.wandb_name}/label1'):
-            os.mkdir(f'./plot_results/{args.wandb_name}/label1')
-        plt.imshow(channel_1, cmap='hot', interpolation='nearest')
-        plt.savefig(f'./plot_results/{args.wandb_name}/label1/epoch_{epoch}_heatmap.png')
-        torchvision.utils.save_image(preds_binary[0][1], f'./plot_results/{args.wandb_name}/label1/epoch_{epoch}.png')
-
-        if not os.path.exists(f'./plot_results/{args.wandb_name}/label2'):
-            os.mkdir(f'./plot_results/{args.wandb_name}/label2')
-        plt.imshow(channel_2, cmap='hot', interpolation='nearest')
-        plt.savefig(f'./plot_results/{args.wandb_name}/label2/epoch_{epoch}_heatmap.png')
-        torchvision.utils.save_image(preds_binary[0][2], f'./plot_results/{args.wandb_name}/label2/epoch_{epoch}.png')
-
-        if not os.path.exists(f'./plot_results/{args.wandb_name}/label3'):
-            os.mkdir(f'./plot_results/{args.wandb_name}/label3')
-        plt.imshow(channel_3, cmap='hot', interpolation='nearest')
-        plt.savefig(f'./plot_results/{args.wandb_name}/label3/epoch_{epoch}_heatmap.png')
-        torchvision.utils.save_image(preds_binary[0][3], f'./plot_results/{args.wandb_name}/label3/epoch_{epoch}.png')
-
-        if not os.path.exists(f'./plot_results/{args.wandb_name}/label4'):
-            os.mkdir(f'./plot_results/{args.wandb_name}/label4')
-        plt.imshow(channel_4, cmap='hot', interpolation='nearest')
-        plt.savefig(f'./plot_results/{args.wandb_name}/label4/epoch_{epoch}_heatmap.png')
-        torchvision.utils.save_image(preds_binary[0][4], f'./plot_results/{args.wandb_name}/label4/epoch_{epoch}.png')
-
-        if not os.path.exists(f'./plot_results/{args.wandb_name}/label5'):
-            os.mkdir(f'./plot_results/{args.wandb_name}/label5')
-        plt.imshow(channel_5, cmap='hot', interpolation='nearest')
-        plt.savefig(f'./plot_results/{args.wandb_name}/label5/epoch_{epoch}_heatmap.png')
-        torchvision.utils.save_image(preds_binary[0][5], f'./plot_results/{args.wandb_name}/label5/epoch_{epoch}.png')
-
+        for i in range(len(preds[0])):
+            plt.imshow(preds[0][i].detach().cpu().numpy(), cmap='hot', interpolation='nearest')
+            plt.savefig(f'./plot_results/{args.wandb_name}/label{i}/epoch_{epoch}_heatmap.png')
+            torchvision.utils.save_image(preds_binary[0][i], f'./plot_results/{args.wandb_name}/label{i}/epoch_{epoch}.png')
     elif not args.only_pixel:
-        if not os.path.exists(f'./plot_results/{args.wandb_name}/label0'):
-            os.mkdir(f'./plot_results/{args.wandb_name}/label0')
-        plt.imshow(channel_0, cmap='hot', interpolation='nearest')
-        plt.savefig(f'./plot_results/{args.wandb_name}/label0/epoch_{epoch}_heatmap.png')
-        torchvision.utils.save_image(preds_binary[0][0], f'./plot_results/{args.wandb_name}/epoch_{epoch}.png')
-
-        if not os.path.exists(f'./plot_results/{args.wandb_name}/label1'):
-            os.mkdir(f'./plot_results/{args.wandb_name}/label1')
-        plt.imshow(channel_1, cmap='hot', interpolation='nearest')
-        plt.savefig(f'./plot_results/{args.wandb_name}/label1/epoch_{epoch}_heatmap.png')
-        torchvision.utils.save_image(preds_binary[0][1], f'./plot_results/{args.wandb_name}/epoch_{epoch}.png')
-
-        if not os.path.exists(f'./plot_results/{args.wandb_name}/label2'):
-            os.mkdir(f'./plot_results/{args.wandb_name}/label2')
-        plt.imshow(channel_2, cmap='hot', interpolation='nearest')
-        plt.savefig(f'./plot_results/{args.wandb_name}/label2/epoch_{epoch}_heatmap.png')
-        torchvision.utils.save_image(preds_binary[0][2], f'./plot_results/{args.wandb_name}/epoch_{epoch}.png')
-
-        if not os.path.exists(f'./plot_results/{args.wandb_name}/label3'):
-            os.mkdir(f'./plot_results/{args.wandb_name}/label3')
-        plt.imshow(channel_3, cmap='hot', interpolation='nearest')
-        plt.savefig(f'./plot_results/{args.wandb_name}/label3/epoch_{epoch}_heatmap.png')
-        torchvision.utils.save_image(preds_binary[0][3], f'./plot_results/{args.wandb_name}/epoch_{epoch}.png')
-
-        if not os.path.exists(f'./plot_results/{args.wandb_name}/label4'):
-            os.mkdir(f'./plot_results/{args.wandb_name}/label4')
-        plt.imshow(channel_4, cmap='hot', interpolation='nearest')
-        plt.savefig(f'./plot_results/{args.wandb_name}/label4/epoch_{epoch}_heatmap.png')
-        torchvision.utils.save_image(preds_binary[0][4], f'./plot_results/{args.wandb_name}/epoch_{epoch}.png')
-
-        if not os.path.exists(f'./plot_results/{args.wandb_name}/label5'):
-            os.mkdir(f'./plot_results/{args.wandb_name}/label5')
-        plt.imshow(channel_5, cmap='hot', interpolation='nearest')
-        plt.savefig(f'./plot_results/{args.wandb_name}/label5/epoch_{epoch}_heatmap.png')
-        torchvision.utils.save_image(preds_binary[0][5], f'./plot_results/{args.wandb_name}/epoch_{epoch}.png')
+        for i in range(len(preds[0])):
+            plt.imshow(preds[0][i].detach().cpu().numpy(), cmap='hot', interpolation='nearest')
+            plt.savefig(f'./plot_results/{args.wandb_name}/label{i}/epoch_{epoch}_heatmap.png')
+            torchvision.utils.save_image(preds_binary[0][i], f'./plot_results/{args.wandb_name}/epoch_{epoch}.png')
 
 
 def save_label_image(label_tensor, args):
-    if not os.path.exists(f'./plot_results/{args.wandb_name}/annotation'):
-        os.mkdir(f'./plot_results/{args.wandb_name}/annotation')
-    
     for i in range(6):
         plt.imshow(label_tensor[0][i].detach().cpu().numpy(), cmap='hot', interpolation='nearest')
         plt.savefig(f'./plot_results/{args.wandb_name}/annotation/label{i}.png')
 
 
-def save_overlaid_image(args, epoch, original_data, predicted_label):
-    if not os.path.exists(f'./plot_results/{args.wandb_name}/overlaid'):
-        os.mkdir(f'./plot_results/{args.wandb_name}/overlaid')
+def save_overlaid_image(args, original_data, predicted_label, data_path):
+    image_path = f'{args.overlaid_image}/{data_path}'
 
     for i in range(6):
-        if not os.path.exists(f'./plot_results/{args.wandb_name}/overlaid/label{i}'):
-            os.mkdir(f'./plot_results/{args.wandb_name}/overlaid/label{i}')
-        torchvision.utils.save_image(
-            predicted_label[0][i], f'./plot_results/{args.wandb_name}/overlaid/label{i}/epoch_{epoch}.png')
-    
-    torchvision.utils.save_image(original_data, f'./plot_results/{args.wandb_name}/overlaid/original.png')
+        original = Image.open(image_path).resize((512,512)).convert("RGB")
+        background = predicted_label[0][i].unsqueeze(0)
+        background = TF.to_pil_image(torch.cat((background, background, background), dim=0))
 
-    ## todo - overlay image
-    
-    exit()
+        overlaid_image = Image.blend(original, background , 0.3)
+        overlaid_image.save(f'./plot_results/{args.wandb_name}/overlaid/overlaid_{i}.png')
 
 
-def save_predictions_as_images(args, loader, model, epoch, folder="plot_results", device="cuda"):
+def save_predictions_as_images(args, loader, model, epoch, device="cuda"):
     model.eval()
 
-    if not os.path.exists(f'{folder}/{args.wandb_name}'):
-        os.mkdir(f'{folder}/{args.wandb_name}')
-
-    for idx, (x, y) in enumerate(loader):
-        x = x.to(device=device)
-        y = y.to(device=device)
+    for idx, (image, label, data_path) in enumerate(loader):
+        image = image.to(device=device)
+        label = label.to(device=device)
+        data_path = data_path[0]
 
         with torch.no_grad():
-            if args.pretrained:
-                preds = model(x)
-            else:
-                preds = torch.sigmoid(model(x))
-            # printsave(preds[0][0][0])
+            if args.pretrained: preds = model(image)
+            else:               preds = torch.sigmoid(model(image))
             preds_binary = (preds > args.threshold).float()
+            # printsave(preds[0][0][0])
             # printsave(preds_binary[0][0][0])
 
         if epoch == 0: 
-            save_label_image(y, args)
+            save_label_image(label, args)
         save_heatmap(preds, preds_binary, args, epoch)
-        save_overlaid_image(args, epoch, x, preds_binary)
+        save_overlaid_image(args, image, preds_binary, data_path)
         break
 
     model.train()
@@ -157,32 +96,32 @@ def check_accuracy(loader, model, args, epoch, device):
     model.eval()
 
     with torch.no_grad():
-        for x, y in tqdm(loader):
-            x = x.to(device)
-            y = y.to(device)
+        for image, label, _ in tqdm(loader):
+            image = image.to(device)
+            label = label.to(device)
             
-            if args.pretrained: preds = model(x)
-            else:               preds = torch.sigmoid(model(x))
+            if args.pretrained: preds = model(image)
+            else:               preds = torch.sigmoid(model(image))
             preds = (preds > 0.5).float()
 
             # ## compare only labels
             # if epoch % 25 == 0:
             #     for i in range(len(preds[0][0])):
             #         for j in range(len(preds[0][0][i])):
-            #             if float(y[0][0][i][j]) == 1.0:
+            #             if float(label[0][0][i][j]) == 1.0:
             #                 num_labels += 1
             #                 if float(preds[0][0][i][j]) == 1.0:
             #                     num_labels_correct += 1
 
             #             if float(preds[0][0][i][j]) == 1.0:
             #                 predict_as_label += 1
-            #                 if float(y[0][0][i][j]) == 1.0:
+            #                 if float(label[0][0][i][j]) == 1.0:
             #                     prediction_correct += 1
 
             # compare whole picture
-            num_correct += (preds == y).sum()
+            num_correct += (preds == label).sum()
             num_pixels += torch.numel(preds)
-            dice_score += (2 * (preds * y).sum()) / ((preds + y).sum() + 1e-8)
+            dice_score += (2 * (preds * label).sum()) / ((preds + label).sum() + 1e-8)
 
     label_accuracy, label_accuracy2 = 0, 0
     whole_image_accuracy = num_correct/num_pixels*100
@@ -201,6 +140,25 @@ def check_accuracy(loader, model, args, epoch, device):
     model.train()
 
     return label_accuracy, label_accuracy2, whole_image_accuracy, predict_as_label, dice
+
+
+def create_directories(args, folder='./plot_results'):
+    if not os.path.exists('./results'):
+        os.mkdir(f'./results')
+    if not os.path.exists(f'{folder}/{args.wandb_name}'):
+        os.mkdir(f'{folder}/{args.wandb_name}')
+    if not os.path.exists(f'./plot_results/{args.wandb_name}/annotation'):
+        os.mkdir(f'./plot_results/{args.wandb_name}/annotation')
+
+    if not os.path.exists(f'./plot_results/{args.wandb_name}/overlaid'):
+        os.mkdir(f'./plot_results/{args.wandb_name}/overlaid')
+    # for i in range(6):
+    #     if not os.path.exists(f'./plot_results/{args.wandb_name}/overlaid/label{i}'):
+    #         os.mkdir(f'./plot_results/{args.wandb_name}/overlaid/label{i}')
+
+    for i in range(6):
+        if not os.path.exists(f'./plot_results/{args.wandb_name}/label{i}'):
+            os.mkdir(f'./plot_results/{args.wandb_name}/label{i}')
 
 
 def printsave(*a):
