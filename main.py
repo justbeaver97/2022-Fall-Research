@@ -1,3 +1,14 @@
+"""
+reference:
+    loss weight: 
+        https://pytorch.org/docs/stable/generated/torch.nn.BCEWithLogitsLoss.html
+        https://discuss.pytorch.org/t/weight-vs-pos-weight-in-nn-bcewithlogitsloss/114859/4
+        https://www.dacon.io/competitions/open/235647/codeshare/1789
+    multi gpu:
+        https://medium.com/daangn/pytorch-multi-gpu-%ED%95%99%EC%8A%B5-%EC%A0%9C%EB%8C%80%EB%A1%9C-%ED%95%98%EA%B8%B0-27270617936b
+
+"""
+
 import argparse
 import torch
 import torch.nn as nn
@@ -36,15 +47,17 @@ def main(args):
     DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
     print(f'Torch is running on {DEVICE}')
 
-    ## load model & set loss function, optimizer, ...
+    ## load model & use multi-gpu
     if args.pretrained:
         model = get_pretrained_model(DEVICE)
     else:
         model = get_model(args, DEVICE)
+    model = nn.DataParallel(model)
+    model.cuda()
 
-    loss_fn_pixel = nn.BCEWithLogitsLoss()
+    ## set loss function & optimizer
+    loss_fn_pixel = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([args.loss_class_weight], device=DEVICE))
     loss_fn_geometry = nn.MSELoss()
-
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
     ## train model
@@ -83,10 +96,9 @@ if __name__ == '__main__':
     parser.add_argument('--annotation_text_name', type=str, default="annotation.txt", help='annotation text file name')
     parser.add_argument('--dataset_split', type=int, default=9, help='dataset split ratio')
     parser.add_argument('--dilate', type=int, default=2, help='dilate iteration')
-
     parser.add_argument('--image_path', type=str, default="./overlay_only", help='path to save overlaid data')
     parser.add_argument('--image_resize', type=int, default=512, help='image resize value')
-    parser.add_argument('--batch_size', type=int, default=12, help='batch size')
+    parser.add_argument('--batch_size', type=int, default=24, help='batch size')
     
     ## hyperparameters - model
     parser.add_argument('--seed', type=int, default=2022, help='seed customization for result reproduction')
@@ -96,6 +108,7 @@ if __name__ == '__main__':
     parser.add_argument('--epochs', type=int, default=1000, help='number of epochs')
     parser.add_argument('--patience', type=int, default=10, help='early stopping patience')
     parser.add_argument('--loss_weight', type=int, default=1, help='weight of the loss function')
+    parser.add_argument('--loss_class_weight', type=float, default=1, help='weight for each class of the loss function')
 
     ## hyperparameters - results
     parser.add_argument('--threshold', type=float, default=0.5, help='threshold for binary prediction')
