@@ -3,6 +3,9 @@ reference:
     mask augmentation:
         https://albumentations.ai/docs/getting_started/mask_augmentation/
         https://medium.com/pytorch/multi-target-in-albumentations-16a777e9006e
+    num_workers:
+        https://jjeamin.github.io/posts/gpus/
+        https://jjdeeplearning.tistory.com/32
 """
 
 
@@ -130,11 +133,12 @@ def load_data(args):
     print('len of train dataset: ', len(train_dataset))
     print('len of val dataset: ', len(val_dataset))
 
+    num_workers = 4 * torch.cuda.device_count()
     train_loader = DataLoader(
-        train_dataset, shuffle=True, batch_size=BATCH_SIZE
+        train_dataset, shuffle=True, batch_size=BATCH_SIZE, num_workers=num_workers
     )
     val_loader = DataLoader(
-        val_dataset, shuffle=False, batch_size=1
+        val_dataset, shuffle=False, batch_size=1, num_workers=num_workers
     )
 
     print("---------- Loading Dataset Done ----------")
