@@ -23,7 +23,6 @@ Reference:
 import os
 import torch
 import torchvision
-import numpy as np
 import matplotlib.pyplot as plt
 import torchvision.transforms.functional as TF
 
@@ -31,8 +30,14 @@ from tqdm import tqdm
 from PIL import Image
 
 
+def save_label_image(label_tensor, args):
+    for i in range(6):
+        plt.imshow(label_tensor[0][i].detach().cpu().numpy(), cmap='hot', interpolation='nearest')
+        plt.savefig(f'./plot_results/{args.wandb_name}/annotation/label{i}.png')
+
+
 def save_heatmap(preds, preds_binary, args, epoch):
-    if args.only_pixel and epoch % 50 == 0:
+    if args.only_pixel and epoch % 10 == 0:
         for i in range(len(preds[0])):
             plt.imshow(preds[0][i].detach().cpu().numpy(), cmap='hot', interpolation='nearest')
             plt.savefig(f'./plot_results/{args.wandb_name}/label{i}/epoch_{epoch}_heatmap.png')
@@ -44,13 +49,7 @@ def save_heatmap(preds, preds_binary, args, epoch):
             torchvision.utils.save_image(preds_binary[0][i], f'./plot_results/{args.wandb_name}/epoch_{epoch}.png')
 
 
-def save_label_image(label_tensor, args):
-    for i in range(6):
-        plt.imshow(label_tensor[0][i].detach().cpu().numpy(), cmap='hot', interpolation='nearest')
-        plt.savefig(f'./plot_results/{args.wandb_name}/annotation/label{i}.png')
-
-
-def save_overlaid_image(args, original_data, predicted_label, data_path):
+def save_overlaid_image(args, predicted_label, data_path):
     image_path = f'{args.overlaid_image}/{data_path}'
 
     for i in range(6):
@@ -80,7 +79,7 @@ def save_predictions_as_images(args, loader, model, epoch, device="cuda"):
         if epoch == 0: 
             save_label_image(label, args)
         save_heatmap(preds, preds_binary, args, epoch)
-        save_overlaid_image(args, image, preds_binary, data_path)
+        save_overlaid_image(args, preds_binary, data_path)
         break
 
     model.train()
@@ -104,19 +103,19 @@ def check_accuracy(loader, model, args, epoch, device):
             else:               preds = torch.sigmoid(model(image))
             preds = (preds > 0.5).float()
 
-            # ## compare only labels
-            # if epoch % 25 == 0:
-            #     for i in range(len(preds[0][0])):
-            #         for j in range(len(preds[0][0][i])):
-            #             if float(label[0][0][i][j]) == 1.0:
-            #                 num_labels += 1
-            #                 if float(preds[0][0][i][j]) == 1.0:
-            #                     num_labels_correct += 1
+            ## compare only labels
+            if epoch % 10 == 0 and args.wandb:
+                for i in range(len(preds[0][0])):
+                    for j in range(len(preds[0][0][i])):
+                        if float(label[0][0][i][j]) == 1.0:
+                            num_labels += 1
+                            if float(preds[0][0][i][j]) == 1.0:
+                                num_labels_correct += 1
 
-            #             if float(preds[0][0][i][j]) == 1.0:
-            #                 predict_as_label += 1
-            #                 if float(label[0][0][i][j]) == 1.0:
-            #                     prediction_correct += 1
+                        if float(preds[0][0][i][j]) == 1.0:
+                            predict_as_label += 1
+                            if float(label[0][0][i][j]) == 1.0:
+                                prediction_correct += 1
 
             # compare whole picture
             num_correct += (preds == label).sum()
@@ -127,7 +126,7 @@ def check_accuracy(loader, model, args, epoch, device):
     whole_image_accuracy = num_correct/num_pixels*100
     dice = dice_score/len(loader)
 
-    if epoch % 25 == 0:
+    if epoch % 10 == 0:
         label_accuracy = (num_labels_correct/(num_labels+(1e-8))) * 100        ## from GT, how many of them were predicted
         label_accuracy2 = (prediction_correct/(predict_as_label+(1e-8))) * 100 ## from prediction, how many of them were GT
         print(f"Number of pixels predicted as label: {predict_as_label}")
@@ -149,13 +148,11 @@ def create_directories(args, folder='./plot_results'):
         os.mkdir(f'{folder}/{args.wandb_name}')
     if not os.path.exists(f'./plot_results/{args.wandb_name}/annotation'):
         os.mkdir(f'./plot_results/{args.wandb_name}/annotation')
-
     if not os.path.exists(f'./plot_results/{args.wandb_name}/overlaid'):
         os.mkdir(f'./plot_results/{args.wandb_name}/overlaid')
     # for i in range(6):
     #     if not os.path.exists(f'./plot_results/{args.wandb_name}/overlaid/label{i}'):
     #         os.mkdir(f'./plot_results/{args.wandb_name}/overlaid/label{i}')
-
     for i in range(6):
         if not os.path.exists(f'./plot_results/{args.wandb_name}/label{i}'):
             os.mkdir(f'./plot_results/{args.wandb_name}/label{i}')

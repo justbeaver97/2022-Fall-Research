@@ -64,7 +64,7 @@ def train(args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, optimizer, train
         )
 
         if args.wandb:
-            if epoch % 25 == 0: 
+            if epoch % 10 == 0: 
                 log_results(
                     args, loss, loss_pixel, loss_geometry, label_accuracy, label_accuracy2, segmentation_accuracy, predict_as_label, dice_score
                 )
@@ -76,8 +76,8 @@ def train(args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, optimizer, train
             "optimizer":  optimizer.state_dict(),
         }
 
-        if pth_save_point % 5 == 0: torch.save(checkpoint, f"./results/UNet_Epoch_{epoch}.pth")
-        pth_save_point += 1
+        # if pth_save_point % 5 == 0: torch.save(checkpoint, f"./results/UNet_Epoch_{epoch}.pth")
+        # pth_save_point += 1
 
         print("Current loss ", loss)
         if best_loss > loss:

@@ -6,7 +6,6 @@ reference:
         https://www.dacon.io/competitions/open/235647/codeshare/1789
     multi gpu:
         https://medium.com/daangn/pytorch-multi-gpu-%ED%95%99%EC%8A%B5-%EC%A0%9C%EB%8C%80%EB%A1%9C-%ED%95%98%EA%B8%B0-27270617936b
-
 """
 
 import argparse
