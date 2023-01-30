@@ -48,7 +48,7 @@ def main(args):
 
     ## load model & use multi-gpu
     if args.pretrained:
-        model = get_pretrained_model(DEVICE)
+        model = get_pretrained_model(args, DEVICE)
     else:
         model = get_model(args, DEVICE)
     model = nn.DataParallel(model)
@@ -98,6 +98,7 @@ if __name__ == '__main__':
     parser.add_argument('--image_path', type=str, default="./overlay_only", help='path to save overlaid data')
     parser.add_argument('--image_resize', type=int, default=512, help='image resize value')
     parser.add_argument('--batch_size', type=int, default=24, help='batch size')
+    parser.add_argument('--delete_method', type=str, default="", help='how to delete unnecessary data in the xray images ["", "letter", "box"]')
     
     ## hyperparameters - model
     parser.add_argument('--seed', type=int, default=2022, help='seed customization for result reproduction')

@@ -29,14 +29,9 @@ class CustomDataset(Dataset):
         self.args = args
         self.df = df.reset_index()
         self.image_dir = self.df["image"]
-        self.label_0_y, self.label_0_x = self.df['label_0_y'], self.df['label_0_x']
-        self.label_1_y, self.label_1_x = self.df['label_1_y'], self.df['label_1_x']
-        self.label_2_y, self.label_2_x = self.df['label_2_y'], self.df['label_2_x']
-        self.label_3_y, self.label_3_x = self.df['label_3_y'], self.df['label_3_x']
-        self.label_4_y, self.label_4_x = self.df['label_4_y'], self.df['label_4_x']
-        self.label_5_y, self.label_5_x = self.df['label_5_y'], self.df['label_5_x']
         self.dataset_path = args.overlaid_image
         self.image_resize = args.image_resize
+        self.delete_method = args.delete_method
         self.transform = transform
 
     def __len__(self):
@@ -44,12 +39,13 @@ class CustomDataset(Dataset):
 
     def __getitem__(self, idx):
         image_dir = self.image_dir[idx]
-        label_0_y, label_0_x = self.label_0_y[idx], self.label_0_x[idx]
-        label_1_y, label_1_x = self.label_1_y[idx], self.label_1_x[idx]
-        label_2_y, label_2_x = self.label_2_y[idx], self.label_2_x[idx]
-        label_3_y, label_3_x = self.label_3_y[idx], self.label_3_x[idx]
-        label_4_y, label_4_x = self.label_4_y[idx], self.label_4_x[idx]
-        label_5_y, label_5_x = self.label_5_y[idx], self.label_5_x[idx]
+        label_0_y, label_0_x = self.df['label_0_y'][idx], self.df['label_0_x'][idx]
+        label_1_y, label_1_x = self.df['label_1_y'][idx], self.df['label_1_x'][idx]
+        label_2_y, label_2_x = self.df['label_2_y'][idx], self.df['label_2_x'][idx]
+        label_3_y, label_3_x = self.df['label_3_y'][idx], self.df['label_3_x'][idx]
+        label_4_y, label_4_x = self.df['label_4_y'][idx], self.df['label_4_x'][idx]
+        label_5_y, label_5_x = self.df['label_5_y'][idx], self.df['label_5_x'][idx]
+        letter_y,  letter_x  = self.df['letter_y'][idx],  self.df['letter_x'][idx]
 
         image_path = f'{self.dataset_path}/{image_dir}'
         image = np.array(Image.open(image_path).convert("RGB"))
@@ -60,6 +56,8 @@ class CustomDataset(Dataset):
         mask3 = np.zeros([self.image_resize, self.image_resize])
         mask4 = np.zeros([self.image_resize, self.image_resize])
         mask5 = np.zeros([self.image_resize, self.image_resize])
+        if self.delete_method == "letter":
+            mask6 = np.zeros([self.image_resize, self.image_resize])
 
         mask0 = dilate_pixel(mask0, label_0_y, label_0_x, self.args)
         mask1 = dilate_pixel(mask1, label_1_y, label_1_x, self.args)
@@ -67,10 +65,14 @@ class CustomDataset(Dataset):
         mask3 = dilate_pixel(mask3, label_3_y, label_3_x, self.args)
         mask4 = dilate_pixel(mask4, label_4_y, label_4_x, self.args)
         mask5 = dilate_pixel(mask5, label_5_y, label_5_x, self.args)
+        if self.delete_method == "letter":
+            mask6 = dilate_pixel(mask6, letter_y, letter_x, self.args)
 
         if self.transform:
-            augmentations = self.transform(
-                image=image, masks=[mask0, mask1, mask2, mask3, mask4, mask5])
+            if self.delete_method == "letter":
+                augmentations = self.transform(image=image, masks=[mask0, mask1, mask2, mask3, mask4, mask5, mask6])
+            else: 
+                augmentations = self.transform(image=image, masks=[mask0, mask1, mask2, mask3, mask4, mask5])
             image = augmentations["image"]
             mask0 = augmentations["masks"][0]
             mask1 = augmentations["masks"][1]
@@ -78,9 +80,15 @@ class CustomDataset(Dataset):
             mask3 = augmentations["masks"][3]
             mask4 = augmentations["masks"][4]
             mask5 = augmentations["masks"][5]
+            if self.delete_method == "letter":
+                mask6 = augmentations["masks"][6]
+
 
         # reference: https://sanghyu.tistory.com/85
-        masks = torch.stack([mask0, mask1, mask2, mask3, mask4, mask5], dim=0)
+        if self.delete_method == "letter":
+            masks = torch.stack([mask0, mask1, mask2, mask3, mask4, mask5, mask6], dim=0)
+        else:
+            masks = torch.stack([mask0, mask1, mask2, mask3, mask4, mask5], dim=0)
 
         return image, masks, image_dir
 
@@ -106,7 +114,6 @@ def load_data(args):
     train_transform = A.Compose([
         A.Resize(height=IMAGE_RESIZE, width=IMAGE_RESIZE),
         A.Rotate(limit=15, p=0.5),
-        # A.HorizontalFlip(p=0.5),
         A.Normalize(
             mean=(0.485, 0.456, 0.406),
             std=(0.229, 0.224, 0.225),
@@ -206,10 +213,15 @@ def load_data(args):
 def create_dataset(args):
     """
     Annotation Dataset Approach 2
-    After getting the annotation points from original image, 
+    After getting the annotation points from original image as text file, 
     create a csv file that resizes the values into resized image size
     """
     print("---------- Starting Creating Dataset ----------")
+    if not args.delete_method:
+        num_of_labels = 6
+    if args.delete_method=="letter":
+        args.annotation_text_name="annotation_label_letters.txt"
+        num_of_labels = 7
     annotation_file = f'{args.annotation_text_path}/{args.annotation_text_name}'
 
     label_coordinate_list = []
@@ -222,23 +234,37 @@ def create_dataset(args):
                 resize_value = args.image_resize / image.shape[0]
                 tmp = []
 
-                for i in range(6):
+                for i in range(num_of_labels):
                     y = int(line.strip().split(',')[(2*i)+2])
                     x = int(line.strip().split(',')[(2*i)+3])
 
                     # save the resized coordinates
                     tmp.append([round(y*resize_value), round(x*resize_value)])
 
-                label_coordinate_list.append([
-                    f'{image_num}_original.png',
-                    tmp[0][0], tmp[0][1], tmp[1][0], tmp[1][1], tmp[2][0], tmp[2][1],
-                    tmp[3][0], tmp[3][1], tmp[4][0], tmp[4][1], tmp[5][0], tmp[5][1],
-                ])
-
-    fields = ['image',
-              'label_0_y', 'label_0_x', 'label_1_y', 'label_1_x', 'label_2_y', 'label_2_x',
-              'label_3_y', 'label_3_x', 'label_4_y', 'label_4_x', 'label_5_y', 'label_5_x'
-              ]
+                if not args.delete_method:
+                    label_coordinate_list.append([
+                        f'{image_num}_original.png',
+                        tmp[0][0], tmp[0][1], tmp[1][0], tmp[1][1], tmp[2][0], tmp[2][1],
+                        tmp[3][0], tmp[3][1], tmp[4][0], tmp[4][1], tmp[5][0], tmp[5][1]
+                    ])
+                elif args.delete_method=="letter":
+                    label_coordinate_list.append([
+                        f'{image_num}_original.png',
+                        tmp[0][0], tmp[0][1], tmp[1][0], tmp[1][1], tmp[2][0], tmp[2][1],
+                        tmp[3][0], tmp[3][1], tmp[4][0], tmp[4][1], tmp[5][0], tmp[5][1],
+                        tmp[6][0], tmp[6][1]
+                    ])
+    if not args.delete_method:
+        fields = ['image',
+                'label_0_y', 'label_0_x', 'label_1_y', 'label_1_x', 'label_2_y', 'label_2_x',
+                'label_3_y', 'label_3_x', 'label_4_y', 'label_4_x', 'label_5_y', 'label_5_x'
+                ]
+    elif args.delete_method=="letter":
+        fields = ['image',
+                'label_0_y', 'label_0_x', 'label_1_y', 'label_1_x', 'label_2_y', 'label_2_x',
+                'label_3_y', 'label_3_x', 'label_4_y', 'label_4_x', 'label_5_y', 'label_5_x',
+                'letter_y', 'letter_x'
+                ]
 
     with open(f'{args.dataset_csv_path}', 'w', newline='') as f:
         write = csv.writer(f)

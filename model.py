@@ -82,15 +82,16 @@ def get_model(args, DEVICE):
     return UNET(in_channels=3, out_channels=6).to(DEVICE)
 
 
-def get_pretrained_model(DEVICE):
+def get_pretrained_model(args, DEVICE):
     print("---------- Loading Model Pretrained ----------")
 
     ENCODER = 'resnet101'
     ENCODER_WEIGHTS = 'imagenet'
-    CLASSES = [
-        'top','upper middle left','upper middle center',
-        'lower middle left', 'lower middle center', 'bottom'
-    ]
+    if not args.delete_method:
+        CLASSES = ['top','upper middle left','upper middle center','lower middle left', 'lower middle center', 'bottom']
+    elif args.delete_method == "letter":
+        CLASSES = ['top','upper middle left','upper middle center','lower middle left', 'lower middle center', 'bottom', 'letter']
+    
     ACTIVATION = 'sigmoid' # could be None for logits or 'softmax2d' for multiclass segmentation
 
     # create segmentation model with pretrained encoder

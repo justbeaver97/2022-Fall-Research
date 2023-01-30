@@ -31,7 +31,9 @@ from PIL import Image
 
 
 def save_label_image(label_tensor, args):
-    for i in range(6):
+    if not args.delete_method: num_channels = 6
+    else:                      num_channels = 7
+    for i in range(num_channels):
         plt.imshow(label_tensor[0][i].detach().cpu().numpy(), cmap='hot', interpolation='nearest')
         plt.savefig(f'./plot_results/{args.wandb_name}/annotation/label{i}.png')
 
@@ -49,22 +51,24 @@ def save_heatmap(preds, preds_binary, args, epoch):
             torchvision.utils.save_image(preds_binary[0][i], f'./plot_results/{args.wandb_name}/epoch_{epoch}.png')
 
 
-def save_overlaid_image(args, predicted_label, data_path):
+def save_overlaid_image(args, idx, predicted_label, data_path):
     image_path = f'{args.overlaid_image}/{data_path}'
+    if not args.delete_method: num_channels = 6
+    else:                      num_channels = 7
 
-    for i in range(6):
+    for i in range(num_channels):
         original = Image.open(image_path).resize((512,512)).convert("RGB")
         background = predicted_label[0][i].unsqueeze(0)
         background = TF.to_pil_image(torch.cat((background, background, background), dim=0))
 
         overlaid_image = Image.blend(original, background , 0.3)
-        overlaid_image.save(f'./plot_results/{args.wandb_name}/overlaid/overlaid_{i}.png')
+        overlaid_image.save(f'./plot_results/{args.wandb_name}/overlaid/label{i}/val{idx}_overlaid.png')
 
 
 def save_predictions_as_images(args, loader, model, epoch, device="cuda"):
     model.eval()
 
-    for idx, (image, label, data_path) in enumerate(loader):
+    for idx, (image, label, data_path) in enumerate(tqdm(loader)):
         image = image.to(device=device)
         label = label.to(device=device)
         data_path = data_path[0]
@@ -78,9 +82,10 @@ def save_predictions_as_images(args, loader, model, epoch, device="cuda"):
 
         if epoch == 0: 
             save_label_image(label, args)
-        save_heatmap(preds, preds_binary, args, epoch)
-        save_overlaid_image(args, preds_binary, data_path)
-        break
+        if idx == 0:
+            save_heatmap(preds, preds_binary, args, epoch)
+        if epoch % 10 == 0:
+            save_overlaid_image(args, idx, preds_binary, data_path)
 
     model.train()
 
@@ -142,6 +147,9 @@ def check_accuracy(loader, model, args, epoch, device):
 
 
 def create_directories(args, folder='./plot_results'):
+    if not args.delete_method: num_channels = 6
+    else:                      num_channels = 7
+
     if not os.path.exists('./results'):
         os.mkdir(f'./results')
     if not os.path.exists(f'{folder}/{args.wandb_name}'):
@@ -150,10 +158,10 @@ def create_directories(args, folder='./plot_results'):
         os.mkdir(f'./plot_results/{args.wandb_name}/annotation')
     if not os.path.exists(f'./plot_results/{args.wandb_name}/overlaid'):
         os.mkdir(f'./plot_results/{args.wandb_name}/overlaid')
-    # for i in range(6):
-    #     if not os.path.exists(f'./plot_results/{args.wandb_name}/overlaid/label{i}'):
-    #         os.mkdir(f'./plot_results/{args.wandb_name}/overlaid/label{i}')
-    for i in range(6):
+    for i in range(num_channels):
+        if not os.path.exists(f'./plot_results/{args.wandb_name}/overlaid/label{i}'):
+            os.mkdir(f'./plot_results/{args.wandb_name}/overlaid/label{i}')
+    for i in range(num_channels):
         if not os.path.exists(f'./plot_results/{args.wandb_name}/label{i}'):
             os.mkdir(f'./plot_results/{args.wandb_name}/label{i}')
 
