@@ -6,6 +6,8 @@ reference:
     num_workers:
         https://jjeamin.github.io/posts/gpus/
         https://jjdeeplearning.tistory.com/32
+    cv2.polylines:
+        https://deep-learning-study.tistory.com/105
 """
 
 
@@ -28,7 +30,6 @@ class CustomDataset(Dataset):
         super().__init__()
         self.args = args
         self.df = df.reset_index()
-        self.image_dir = self.df["image"]
         self.dataset_path = args.overlaid_image
         self.image_resize = args.image_resize
         self.delete_method = args.delete_method
@@ -38,14 +39,40 @@ class CustomDataset(Dataset):
         return len(self.df)
 
     def __getitem__(self, idx):
-        image_dir = self.image_dir[idx]
+        image_dir, num_of_pixels = self.df['image'][idx], self.df['data'][idx]
         label_0_y, label_0_x = self.df['label_0_y'][idx], self.df['label_0_x'][idx]
         label_1_y, label_1_x = self.df['label_1_y'][idx], self.df['label_1_x'][idx]
         label_2_y, label_2_x = self.df['label_2_y'][idx], self.df['label_2_x'][idx]
         label_3_y, label_3_x = self.df['label_3_y'][idx], self.df['label_3_x'][idx]
         label_4_y, label_4_x = self.df['label_4_y'][idx], self.df['label_4_x'][idx]
         label_5_y, label_5_x = self.df['label_5_y'][idx], self.df['label_5_x'][idx]
-        letter_y,  letter_x  = self.df['letter_y'][idx],  self.df['letter_x'][idx]
+        if self.delete_method == "letter":
+            letter_y,  letter_x  = self.df['letter_y'][idx],  self.df['letter_x'][idx]
+        elif self.delete_method == "box":
+            box_0_y, box_0_x, box_1_y, box_1_x, box_2_y, box_2_x, box_3_y, box_3_x = 0,0,0,0,0,0,0,0
+            box_4_y, box_4_x, box_5_y, box_5_x, box_6_y, box_6_x, box_7_y, box_7_x = 0,0,0,0,0,0,0,0
+            box_8_y, box_8_x, box_9_y, box_9_x, box_10_y, box_10_x, box_11_y, box_11_x = 0,0,0,0,0,0,0,0
+            if num_of_pixels >= 10:
+                box_0_y, box_0_x = self.df['box_0_y'][idx], self.df['box_0_x'][idx]
+                box_1_y, box_1_x = self.df['box_1_y'][idx], self.df['box_1_x'][idx]
+                box_2_y, box_2_x = self.df['box_2_y'][idx], self.df['box_2_x'][idx]
+                box_3_y, box_3_x = self.df['box_3_y'][idx], self.df['box_3_x'][idx]
+            if num_of_pixels >= 14:
+                box_4_y, box_4_x = self.df['box_4_y'][idx], self.df['box_4_x'][idx]
+                box_5_y, box_5_x = self.df['box_5_y'][idx], self.df['box_5_x'][idx]
+                box_6_y, box_6_x = self.df['box_6_y'][idx], self.df['box_6_x'][idx]
+                box_7_y, box_7_x = self.df['box_7_y'][idx], self.df['box_7_x'][idx]
+            if num_of_pixels >= 18:
+                box_8_y, box_8_x = self.df['box_8_y'][idx], self.df['box_8_x'][idx]
+                box_9_y, box_9_x = self.df['box_9_y'][idx], self.df['box_9_x'][idx]
+                box_10_y, box_10_x = self.df['box_10_y'][idx], self.df['box_10_x'][idx]
+                box_11_y, box_11_x = self.df['box_11_y'][idx], self.df['box_11_x'][idx]
+            
+            box_list = [
+                box_0_y, box_0_x, box_1_y, box_1_x, box_2_y, box_2_x, box_3_y, box_3_x,
+                box_4_y, box_4_x, box_5_y, box_5_x, box_6_y, box_6_x, box_7_y, box_7_x,
+                box_8_y, box_8_x, box_9_y, box_9_x, box_10_y, box_10_x, box_11_y, box_11_x
+            ]
 
         image_path = f'{self.dataset_path}/{image_dir}'
         image = np.array(Image.open(image_path).convert("RGB"))
@@ -67,6 +94,9 @@ class CustomDataset(Dataset):
         mask5 = dilate_pixel(mask5, label_5_y, label_5_x, self.args)
         if self.delete_method == "letter":
             mask6 = dilate_pixel(mask6, letter_y, letter_x, self.args)
+
+        if self.delete_method == "box":
+            image = delete_unnecessary_boxes(image, box_list)
 
         if self.transform:
             if self.delete_method == "letter":
@@ -98,6 +128,14 @@ def dilate_pixel(mask, label_y, label_x, args):
     dilated_mask = ndimage.binary_dilation(mask, structure=struct, iterations=args.dilate).astype(mask.dtype)
 
     return dilated_mask
+
+
+def delete_unnecessary_boxes(image, box_list):
+    print(box_list)
+    for i in range(len(box_list)//8):
+        print(box_list[int(8*i):int(8*(i+1))])
+    exit()
+
 
 def load_data(args):
     print("---------- Starting Loading Dataset ----------")
@@ -217,19 +255,24 @@ def create_dataset(args):
     create a csv file that resizes the values into resized image size
     """
     print("---------- Starting Creating Dataset ----------")
-    if not args.delete_method:
-        num_of_labels = 6
-    if args.delete_method=="letter":
-        args.annotation_text_name="annotation_label_letters.txt"
+    if args.delete_method == "letter":
+        annotation_file = f'{args.annotation_text_path}/annotation_label_letters.txt'
         num_of_labels = 7
-    annotation_file = f'{args.annotation_text_path}/{args.annotation_text_name}'
-
+    elif args.delete_method == "box":
+        create_box_dataset(args)
+        return 
+    else:
+        annotation_file = f'{args.annotation_text_path}/{args.annotation_text_name}'
+        num_of_labels = 6
+    
     label_coordinate_list = []
     with open(annotation_file, 'r') as f:
         for line in tqdm(f):
             if line.strip().split(',')[1] != '0':
                 image_name = line.strip().split(',')[0]
                 image_num = line.strip().split(',')[0].split('_')[0]
+                num_of_pixels = int(line.strip().split(',')[1])
+
                 image = cv2.imread(f'{args.padded_image}/{image_name}')
                 resize_value = args.image_resize / image.shape[0]
                 tmp = []
@@ -243,32 +286,107 @@ def create_dataset(args):
 
                 if not args.delete_method:
                     label_coordinate_list.append([
-                        f'{image_num}_original.png',
+                        f'{image_num}_original.png',num_of_pixels,
                         tmp[0][0], tmp[0][1], tmp[1][0], tmp[1][1], tmp[2][0], tmp[2][1],
                         tmp[3][0], tmp[3][1], tmp[4][0], tmp[4][1], tmp[5][0], tmp[5][1]
                     ])
                 elif args.delete_method=="letter":
                     label_coordinate_list.append([
-                        f'{image_num}_original.png',
+                        f'{image_num}_original.png',num_of_pixels,
                         tmp[0][0], tmp[0][1], tmp[1][0], tmp[1][1], tmp[2][0], tmp[2][1],
                         tmp[3][0], tmp[3][1], tmp[4][0], tmp[4][1], tmp[5][0], tmp[5][1],
                         tmp[6][0], tmp[6][1]
                     ])
-    if not args.delete_method:
-        fields = ['image',
-                'label_0_y', 'label_0_x', 'label_1_y', 'label_1_x', 'label_2_y', 'label_2_x',
-                'label_3_y', 'label_3_x', 'label_4_y', 'label_4_x', 'label_5_y', 'label_5_x'
-                ]
-    elif args.delete_method=="letter":
-        fields = ['image',
+    if args.delete_method=="letter":
+        fields = ['image','data',
                 'label_0_y', 'label_0_x', 'label_1_y', 'label_1_x', 'label_2_y', 'label_2_x',
                 'label_3_y', 'label_3_x', 'label_4_y', 'label_4_x', 'label_5_y', 'label_5_x',
                 'letter_y', 'letter_x'
                 ]
+    else:
+        fields = ['image','data',
+                'label_0_y', 'label_0_x', 'label_1_y', 'label_1_x', 'label_2_y', 'label_2_x',
+                'label_3_y', 'label_3_x', 'label_4_y', 'label_4_x', 'label_5_y', 'label_5_x'
+                ]
+    
 
     with open(f'{args.dataset_csv_path}', 'w', newline='') as f:
         write = csv.writer(f)
         write.writerow(fields)
         write.writerows(label_coordinate_list)
 
+
+
     print("---------- Creating Dataset Done ----------\n")
+
+
+def create_box_dataset(args):
+    """
+    Annotation Dataset Approach 2-1
+    After getting the box points from original image as text file, 
+    create a csv file that resizes the values into resized image size
+    """
+    print("---------- Starting Creating Box Dataset ----------")
+    annotation_file = f'{args.annotation_text_path}/annotation_label_boxes.txt'
+
+    label_coordinate_list = []
+    with open(annotation_file, 'r') as f:
+        for line in tqdm(f):
+            if line.strip().split(',')[1] != '0':
+                image_name = line.strip().split(',')[0]
+                image_num = line.strip().split(',')[0].split('_')[0]
+                num_of_pixels = int(line.strip().split(',')[1])
+
+                image = cv2.imread(f'{args.padded_image}/{image_name}')
+                resize_value = args.image_resize / image.shape[0]
+                tmp = []
+
+                for i in range(num_of_pixels):
+                    y = int(line.strip().split(',')[(2*i)+2])
+                    x = int(line.strip().split(',')[(2*i)+3])
+
+                    # save the resized coordinates
+                    tmp.append([round(y*resize_value), round(x*resize_value)])
+
+                if num_of_pixels == 10:
+                    label_coordinate_list.append([
+                        f'{image_num}_original.png',num_of_pixels,
+                        tmp[0][0], tmp[0][1], tmp[1][0], tmp[1][1], tmp[2][0], tmp[2][1],
+                        tmp[3][0], tmp[3][1], tmp[4][0], tmp[4][1], tmp[5][0], tmp[5][1],
+                        tmp[6][0], tmp[6][1], tmp[7][0], tmp[7][1], tmp[8][0], tmp[8][1], tmp[9][0], tmp[9][1], 
+                        0,         0,         0,         0,         0,         0,         0,         0,
+                        0,         0,         0,         0,         0,         0,         0,         0
+                    ])
+                elif num_of_pixels == 14:
+                    label_coordinate_list.append([
+                        f'{image_num}_original.png',num_of_pixels,
+                        tmp[0][0], tmp[0][1], tmp[1][0], tmp[1][1], tmp[2][0], tmp[2][1],
+                        tmp[3][0], tmp[3][1], tmp[4][0], tmp[4][1], tmp[5][0], tmp[5][1],
+                        tmp[6][0], tmp[6][1], tmp[7][0], tmp[7][1], tmp[8][0], tmp[8][1], tmp[9][0], tmp[9][1], 
+                        tmp[10][0], tmp[10][1], tmp[11][0], tmp[11][1], tmp[12][0], tmp[12][1], tmp[13][0], tmp[13][1],
+                        0,         0,         0,         0,         0,         0,         0,         0
+                    ])
+                elif num_of_pixels == 18:
+                    label_coordinate_list.append([
+                        f'{image_num}_original.png',
+                        tmp[0][0], tmp[0][1], tmp[1][0], tmp[1][1], tmp[2][0], tmp[2][1],
+                        tmp[3][0], tmp[3][1], tmp[4][0], tmp[4][1], tmp[5][0], tmp[5][1],
+                        tmp[0][0], tmp[0][1], tmp[1][0], tmp[1][1], tmp[2][0], tmp[2][1], tmp[3][0], tmp[3][1], 
+                        tmp[10][0], tmp[10][1], tmp[11][0], tmp[11][1], tmp[12][0], tmp[12][1], tmp[13][0], tmp[13][1],
+                        tmp[14][0], tmp[14][1], tmp[15][0], tmp[15][1], tmp[16][0], tmp[16][1], tmp[17][0], tmp[17][1]
+                    ])
+                
+    fields = ['image','data',
+        'label_0_y', 'label_0_x', 'label_1_y', 'label_1_x', 'label_2_y', 'label_2_x',
+        'label_3_y', 'label_3_x', 'label_4_y', 'label_4_x', 'label_5_y', 'label_5_x',
+        'box_0_y', 'box_0_x', 'box_1_y', 'box_1_x', 'box_2_y', 'box_2_x', 'box_3_y', 'box_3_x', 
+        'box_4_y', 'box_4_x', 'box_5_y', 'box_5_x', 'box_6_y', 'box_6_x', 'box_7_y', 'box_7_x',
+        'box_8_y', 'box_8_x', 'box_9_y', 'box_9_x', 'box_10_y', 'box_10_x', 'box_11_y', 'box_11_x',
+    ]
+
+    with open(f'./xlsx/dataset.csv', 'w', newline='') as f:
+        write = csv.writer(f)
+        write.writerow(fields)
+        write.writerows(label_coordinate_list)
+
+    print("---------- Creating Box Dataset Done ----------\n")
