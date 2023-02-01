@@ -31,8 +31,9 @@ from PIL import Image
 
 
 def save_label_image(label_tensor, args):
-    if not args.delete_method: num_channels = 6
-    else:                      num_channels = 7
+    if args.delete_method == 'letter': num_channels = 7
+    else:                              num_channels = 6
+
     for i in range(num_channels):
         plt.imshow(label_tensor[0][i].detach().cpu().numpy(), cmap='hot', interpolation='nearest')
         plt.savefig(f'./plot_results/{args.wandb_name}/annotation/label{i}.png')
@@ -53,14 +54,13 @@ def save_heatmap(preds, preds_binary, args, epoch):
 
 def save_overlaid_image(args, idx, predicted_label, data_path):
     image_path = f'{args.overlaid_image}/{data_path}'
-    if not args.delete_method: num_channels = 6
-    else:                      num_channels = 7
+    if args.delete_method == 'letter': num_channels = 7
+    else:                              num_channels = 6
 
     for i in range(num_channels):
         original = Image.open(image_path).resize((512,512)).convert("RGB")
         background = predicted_label[0][i].unsqueeze(0)
         background = TF.to_pil_image(torch.cat((background, background, background), dim=0))
-
         overlaid_image = Image.blend(original, background , 0.3)
         overlaid_image.save(f'./plot_results/{args.wandb_name}/overlaid/label{i}/val{idx}_overlaid.png')
 

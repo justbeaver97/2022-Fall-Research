@@ -6,8 +6,11 @@ reference:
     num_workers:
         https://jjeamin.github.io/posts/gpus/
         https://jjdeeplearning.tistory.com/32
-    cv2.polylines:
+    cv2.fillconvexpoly:
         https://deep-learning-study.tistory.com/105
+        https://copycoding.tistory.com/150
+    cv2.error: OpenCV(4.6.0) /io/opencv/modules/imgproc/src/drawing.cpp:2374: error: (-215:Assertion failed) points.checkVector(2, CV_32S) >= 0 in function 'fillConvexPoly'
+        https://stackoverflow.com/questions/50376393/how-does-opencv-function-cv2-fillpoly-work
 """
 
 
@@ -39,6 +42,8 @@ class CustomDataset(Dataset):
         return len(self.df)
 
     def __getitem__(self, idx):
+        self.df = self.df.fillna(0)
+
         image_dir, num_of_pixels = self.df['image'][idx], self.df['data'][idx]
         label_0_y, label_0_x = self.df['label_0_y'][idx], self.df['label_0_x'][idx]
         label_1_y, label_1_x = self.df['label_1_y'][idx], self.df['label_1_x'][idx]
@@ -46,6 +51,7 @@ class CustomDataset(Dataset):
         label_3_y, label_3_x = self.df['label_3_y'][idx], self.df['label_3_x'][idx]
         label_4_y, label_4_x = self.df['label_4_y'][idx], self.df['label_4_x'][idx]
         label_5_y, label_5_x = self.df['label_5_y'][idx], self.df['label_5_x'][idx]
+
         if self.delete_method == "letter":
             letter_y,  letter_x  = self.df['letter_y'][idx],  self.df['letter_x'][idx]
         elif self.delete_method == "box":
@@ -131,10 +137,20 @@ def dilate_pixel(mask, label_y, label_x, args):
 
 
 def delete_unnecessary_boxes(image, box_list):
-    print(box_list)
     for i in range(len(box_list)//8):
-        print(box_list[int(8*i):int(8*(i+1))])
-    exit()
+        if box_list[(8*i)+2] == 0 and box_list[(8*i)+3] == 0:
+            continue
+        else:
+            ## because of y, x -> x, y 
+            pts = np.array([
+                # [box_list[(8*i)+0],box_list[(8*i)+1]],[box_list[(8*i)+2],box_list[(8*i)+3]],
+                # [box_list[(8*i)+4],box_list[(8*i)+5]],[box_list[(8*i)+6],box_list[(8*i)+7]]
+                [box_list[(8*i)+1],box_list[(8*i)+0]],[box_list[(8*i)+3],box_list[(8*i)+2]],
+                [box_list[(8*i)+5],box_list[(8*i)+4]],[box_list[(8*i)+7],box_list[(8*i)+6]]
+            ],'int32')
+            color = (255,255,255)
+            image = cv2.fillConvexPoly(image, pts, color)
+    return image
 
 
 def load_data(args):
@@ -151,7 +167,7 @@ def load_data(args):
     ## InvertImg, pixeldropout
     train_transform = A.Compose([
         A.Resize(height=IMAGE_RESIZE, width=IMAGE_RESIZE),
-        A.Rotate(limit=15, p=0.5),
+        # A.Rotate(limit=15, p=0.5),
         A.Normalize(
             mean=(0.485, 0.456, 0.406),
             std=(0.229, 0.224, 0.225),
@@ -180,7 +196,7 @@ def load_data(args):
 
     num_workers = 4 * torch.cuda.device_count()
     train_loader = DataLoader(
-        train_dataset, shuffle=True, batch_size=BATCH_SIZE, num_workers=num_workers
+        train_dataset, shuffle=False, batch_size=BATCH_SIZE, num_workers=num_workers
     )
     val_loader = DataLoader(
         val_dataset, shuffle=False, batch_size=1, num_workers=num_workers
@@ -346,7 +362,10 @@ def create_box_dataset(args):
                     x = int(line.strip().split(',')[(2*i)+3])
 
                     # save the resized coordinates
-                    tmp.append([round(y*resize_value), round(x*resize_value)])
+                    if i < 6:
+                        tmp.append([round(y*resize_value), round(x*resize_value)])
+                    else:
+                        tmp.append([y, x])
 
                 if num_of_pixels == 10:
                     label_coordinate_list.append([
