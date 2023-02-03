@@ -3,23 +3,24 @@ reference:
     train process: https://github.com/aladdinpersson/Machine-Learning-Collection
 """
 
-import os
 import torch
+import torch.nn as nn
 import numpy as np
-import matplotlib.pyplot as plt
 
 from tqdm import tqdm
 from spatial_mean import SpatialMean_CHAN
 from log import log_results, log_results_no_label
 from utility import save_predictions_as_images, check_accuracy, create_directories
+from dataset import load_data
 
 
 def train_function(args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, optimizer, loader):
     loop = tqdm(loader)
 
-    for batch_idx, (data, targets, _) in enumerate(loop):
+    for batch_idx, (data, targets, image_dir) in enumerate(loop):
         data    = data.to(device=DEVICE)
         targets = targets.float().to(device=DEVICE)
+        # save_image(data, f'./tmp/tmp_image/{image_dir[0].split(".")[0]}.png')
 
         if args.pretrained: predictions = model(data)
         else:               predictions = torch.sigmoid(model(data))
@@ -55,6 +56,20 @@ def train(args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, optimizer, train
     
     for epoch in range(args.epochs):
         print(f"\nRunning Epoch # {epoch}")
+
+        ## todo: recall dataloader
+        if epoch % 50 == 0:
+            if args.progressive_erosion:
+                args.dilate = args.dilate - args.dilation_decrease
+                train_loader, val_loader = load_data(args)
+
+            if args.progressive_weight:
+                ## todo: after reduce in the dilation iteration,
+                ## change the weight in the loss function 80 - 5, 60 - 10, 40 - 10, 20 - 10, 10 - 30
+                if args.dilate <= 15:   args.loss_class_weight = 30
+                elif args.dilate <= 60: args.loss_class_weight = 10
+                else:                     args.loss_class_weight = 5
+                loss_fn_pixel = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([args.loss_class_weight], device=DEVICE))
 
         loss, loss_pixel, loss_geometry = train_function(
             args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, optimizer, train_loader
