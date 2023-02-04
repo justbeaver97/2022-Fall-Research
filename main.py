@@ -36,8 +36,8 @@ def main(args):
     ## pad the original image & get annotation coordintaes
     if args.pad_image:
         preprocess.pad_original_image(args)
+        preprocess.pad_overlaid_image(args)
         ## after padding, annotation should be manually done by using ./create data/select_point.py
-        exit()
 
     ## create dataset from padded images & annotation text file
     if args.create_dataset: 
@@ -98,6 +98,7 @@ if __name__ == '__main__':
     parser.add_argument('--dicom_to_png_path', type=str, default="./data/dicom_to_png", help='path to save dicom to png preprocessed data')
     parser.add_argument('--overlaid_image', type=str, default="./data/overlay_image_to_label", help='path to all the data from overlaying')
     parser.add_argument('--overlaid_image_only', type=str, default="./data/overlay_only", help='path to save overlaid data')
+    parser.add_argument('--overlaid_padded_image', type=str, default="./data/overlay_padded_image", help='path to save padded data')
     parser.add_argument('--padded_image', type=str, default="./data/padded_image", help='path to save padded data')
 
     ## hyperparameters - data

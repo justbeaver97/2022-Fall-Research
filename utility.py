@@ -53,7 +53,7 @@ def save_heatmap(preds, preds_binary, args, epoch):
 
 
 def save_overlaid_image(args, idx, predicted_label, data_path):
-    image_path = f'{args.overlaid_image}/{data_path}'
+    image_path = f'{args.padded_image}/{data_path}'
     if args.delete_method == 'letter': num_channels = 7
     else:                              num_channels = 6
 
@@ -80,6 +80,7 @@ def save_predictions_as_images(args, loader, model, epoch, device="cuda"):
             # printsave(preds[0][0][0])
             # printsave(preds_binary[0][0][0])
 
+        ## todo: record heatmaps even if the loss hasn't decreased
         if epoch == 0: 
             save_label_image(label, args)
         if idx == 0:

@@ -3,10 +3,8 @@ import pandas as pd
 import numpy as np
 import os
 import cv2
-import sys
 import torch
 import random
-import pprint
 
 from glob import glob
 from tqdm import tqdm
@@ -251,9 +249,65 @@ def customize_seed(seed):
     np.random.seed(seed)
     random.seed(seed)
 
+
+## todo: currently padded images has the annotations. need to fix.
 def pad_original_image(args):
+    print("---------- Starting Padding Original Image Process ----------")
     if not os.path.exists(f'{args.padded_image}'): 
         os.mkdir(f'{args.padded_image}')
+    original_image_path = sorted(glob(f'{args.overlaid_image}/*_original.png'))
+
+    for overlaid_path in tqdm(original_image_path):
+        image_num = overlaid_path.split('/')[-1].split('_')[0]
+        overlaid_image_array = cv2.imread(overlaid_path)
+        fill = abs(overlaid_image_array.shape[0] - overlaid_image_array.shape[1])
+        
+        ## when height > width
+        if overlaid_image_array.shape[0] > overlaid_image_array.shape[1]:
+            padded_array = np.zeros((
+                overlaid_image_array.shape[0], overlaid_image_array.shape[0], 3
+            ))
+        
+            for i in range(overlaid_image_array.shape[0]):
+                left = np.zeros((int(fill/2),3))
+                middle = np.array(overlaid_image_array[i])
+                if fill % 2 == 0: right = np.zeros((int(fill/2),3))
+                else:             right = np.zeros((int(fill/2)+1,3))
+
+                tmp = np.concatenate((left, middle), axis=0)
+                padded_array[i] = np.concatenate((tmp, right), axis=0)
+
+        ## when height < width
+        elif overlaid_image_array.shape[0] < overlaid_image_array.shape[1]:            
+            padded_array = np.zeros((
+                overlaid_image_array.shape[1], overlaid_image_array.shape[1], 3
+            ))
+
+            high = np.zeros((int(fill/2),overlaid_image_array.shape[1],3))
+            if fill % 2 == 0: low = np.zeros((int(fill/2),overlaid_image_array.shape[1],3))
+            else:             low = np.zeros((int(fill/2)+1,overlaid_image_array.shape[1],3))
+
+            tmp = np.vstack([high, overlaid_image_array])
+            padded_array = np.vstack([tmp, low])
+        
+        ## when height == width
+        else: 
+            padded_array = np.zeros((
+                overlaid_image_array.shape[0], overlaid_image_array.shape[1], 3
+            ))
+            padded_array = overlaid_image_array[:]
+
+        norm = (padded_array - np.min(padded_array)) / (np.max(padded_array) - np.min(padded_array))
+        norm_img = np.uint8(norm*255)
+        padded_image = Image.fromarray(norm_img)
+        padded_image.save(f'{args.padded_image}/{image_num}_pad.png')
+    print("---------- Padding Original Image Process Done ----------")
+
+
+def pad_overlaid_image(args):
+    print("---------- Starting Padding Overlaid Image Process ----------")
+    if not os.path.exists(f'{args.overlaid_padded_image}'): 
+        os.mkdir(f'{args.overlaid_padded_image}')
     overlaid_image_path = sorted(glob(f'{args.overlaid_image}/*_overlay.png'))
 
     for overlaid_path in tqdm(overlaid_image_path):
@@ -299,4 +353,5 @@ def pad_original_image(args):
         norm = (padded_array - np.min(padded_array)) / (np.max(padded_array) - np.min(padded_array))
         norm_img = np.uint8(norm*255)
         padded_image = Image.fromarray(norm_img)
-        padded_image.save(f'{args.padded_image}/{image_num}_pad.png')
+        padded_image.save(f'{args.overlaid_padded_image}/{image_num}_pad.png')
+    print("---------- Padding Original Image Process Done ----------")

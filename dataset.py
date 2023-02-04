@@ -33,11 +33,11 @@ class CustomDataset(Dataset):
         super().__init__()
         self.args = args
         self.df = df.reset_index()
-        self.dataset_path = args.overlaid_image
+        self.dataset_path = args.padded_image
         self.image_resize = args.image_resize
         self.delete_method = args.delete_method
         self.transform = transform
-
+        
     def __len__(self):
         return len(self.df)
 
@@ -141,15 +141,15 @@ def delete_unnecessary_boxes(image, box_list):
         if box_list[(8*i)+2] == 0 and box_list[(8*i)+3] == 0:
             continue
         else:
-            ## because of y, x -> x, y 
+            ## because of y, x -> x, y flip
             pts = np.array([
-                # [box_list[(8*i)+0],box_list[(8*i)+1]],[box_list[(8*i)+2],box_list[(8*i)+3]],
-                # [box_list[(8*i)+4],box_list[(8*i)+5]],[box_list[(8*i)+6],box_list[(8*i)+7]]
                 [box_list[(8*i)+1],box_list[(8*i)+0]],[box_list[(8*i)+3],box_list[(8*i)+2]],
                 [box_list[(8*i)+5],box_list[(8*i)+4]],[box_list[(8*i)+7],box_list[(8*i)+6]]
             ],'int32')
-            color = (255,255,255)
+            color = (0,0,0)
             image = cv2.fillConvexPoly(image, pts, color)
+
+    ## todo: the boxes are moves towards right side a little bit. 
     return image
 
 
@@ -302,13 +302,13 @@ def create_dataset(args):
 
                 if not args.delete_method:
                     label_coordinate_list.append([
-                        f'{image_num}_original.png',num_of_pixels,
+                        f'{image_num}_pad.png',num_of_pixels,
                         tmp[0][0], tmp[0][1], tmp[1][0], tmp[1][1], tmp[2][0], tmp[2][1],
                         tmp[3][0], tmp[3][1], tmp[4][0], tmp[4][1], tmp[5][0], tmp[5][1]
                     ])
                 elif args.delete_method=="letter":
                     label_coordinate_list.append([
-                        f'{image_num}_original.png',num_of_pixels,
+                        f'{image_num}_pad.png',num_of_pixels,
                         tmp[0][0], tmp[0][1], tmp[1][0], tmp[1][1], tmp[2][0], tmp[2][1],
                         tmp[3][0], tmp[3][1], tmp[4][0], tmp[4][1], tmp[5][0], tmp[5][1],
                         tmp[6][0], tmp[6][1]
@@ -369,7 +369,7 @@ def create_box_dataset(args):
 
                 if num_of_pixels == 10:
                     label_coordinate_list.append([
-                        f'{image_num}_original.png',num_of_pixels,
+                        f'{image_num}_pad.png',num_of_pixels,
                         tmp[0][0], tmp[0][1], tmp[1][0], tmp[1][1], tmp[2][0], tmp[2][1],
                         tmp[3][0], tmp[3][1], tmp[4][0], tmp[4][1], tmp[5][0], tmp[5][1],
                         tmp[6][0], tmp[6][1], tmp[7][0], tmp[7][1], tmp[8][0], tmp[8][1], tmp[9][0], tmp[9][1], 
@@ -378,7 +378,7 @@ def create_box_dataset(args):
                     ])
                 elif num_of_pixels == 14:
                     label_coordinate_list.append([
-                        f'{image_num}_original.png',num_of_pixels,
+                        f'{image_num}_pad.png',num_of_pixels,
                         tmp[0][0], tmp[0][1], tmp[1][0], tmp[1][1], tmp[2][0], tmp[2][1],
                         tmp[3][0], tmp[3][1], tmp[4][0], tmp[4][1], tmp[5][0], tmp[5][1],
                         tmp[6][0], tmp[6][1], tmp[7][0], tmp[7][1], tmp[8][0], tmp[8][1], tmp[9][0], tmp[9][1], 
@@ -387,7 +387,7 @@ def create_box_dataset(args):
                     ])
                 elif num_of_pixels == 18:
                     label_coordinate_list.append([
-                        f'{image_num}_original.png',
+                        f'{image_num}_pad.png',
                         tmp[0][0], tmp[0][1], tmp[1][0], tmp[1][1], tmp[2][0], tmp[2][1],
                         tmp[3][0], tmp[3][1], tmp[4][0], tmp[4][1], tmp[5][0], tmp[5][1],
                         tmp[0][0], tmp[0][1], tmp[1][0], tmp[1][1], tmp[2][0], tmp[2][1], tmp[3][0], tmp[3][1], 
