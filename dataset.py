@@ -58,6 +58,7 @@ class CustomDataset(Dataset):
             box_0_y, box_0_x, box_1_y, box_1_x, box_2_y, box_2_x, box_3_y, box_3_x = 0,0,0,0,0,0,0,0
             box_4_y, box_4_x, box_5_y, box_5_x, box_6_y, box_6_x, box_7_y, box_7_x = 0,0,0,0,0,0,0,0
             box_8_y, box_8_x, box_9_y, box_9_x, box_10_y, box_10_x, box_11_y, box_11_x = 0,0,0,0,0,0,0,0
+            box_12_y, box_12_x, box_13_y, box_13_x, box_14_y, box_14_x, box_15_y, box_15_x = 0,0,0,0,0,0,0,0
             if num_of_pixels >= 10:
                 box_0_y, box_0_x = self.df['box_0_y'][idx], self.df['box_0_x'][idx]
                 box_1_y, box_1_x = self.df['box_1_y'][idx], self.df['box_1_x'][idx]
@@ -73,11 +74,17 @@ class CustomDataset(Dataset):
                 box_9_y, box_9_x = self.df['box_9_y'][idx], self.df['box_9_x'][idx]
                 box_10_y, box_10_x = self.df['box_10_y'][idx], self.df['box_10_x'][idx]
                 box_11_y, box_11_x = self.df['box_11_y'][idx], self.df['box_11_x'][idx]
+            if num_of_pixels >= 22:
+                box_12_y, box_12_x = self.df['box_12_y'][idx], self.df['box_12_x'][idx]
+                box_13_y, box_13_x = self.df['box_13_y'][idx], self.df['box_13_x'][idx]
+                box_14_y, box_14_x = self.df['box_14_y'][idx], self.df['box_14_x'][idx]
+                box_15_y, box_15_x = self.df['box_15_y'][idx], self.df['box_15_x'][idx]
             
             box_list = [
                 box_0_y, box_0_x, box_1_y, box_1_x, box_2_y, box_2_x, box_3_y, box_3_x,
                 box_4_y, box_4_x, box_5_y, box_5_x, box_6_y, box_6_x, box_7_y, box_7_x,
-                box_8_y, box_8_x, box_9_y, box_9_x, box_10_y, box_10_x, box_11_y, box_11_x
+                box_8_y, box_8_x, box_9_y, box_9_x, box_10_y, box_10_x, box_11_y, box_11_x,
+                box_12_y, box_12_x, box_13_y, box_13_x, box_14_y, box_14_x, box_15_y, box_15_x
             ]
 
         image_path = f'{self.dataset_path}/{image_dir}'
@@ -139,7 +146,7 @@ def dilate_pixel(mask, label_y, label_x, args):
 def delete_unnecessary_boxes(image, box_list):
     for i in range(len(box_list)//8):
         if box_list[(8*i)+2] == 0 and box_list[(8*i)+3] == 0:
-            continue
+            break
         else:
             ## because of y, x -> x, y flip
             pts = np.array([
@@ -373,8 +380,6 @@ def create_box_dataset(args):
                         tmp[0][0], tmp[0][1], tmp[1][0], tmp[1][1], tmp[2][0], tmp[2][1],
                         tmp[3][0], tmp[3][1], tmp[4][0], tmp[4][1], tmp[5][0], tmp[5][1],
                         tmp[6][0], tmp[6][1], tmp[7][0], tmp[7][1], tmp[8][0], tmp[8][1], tmp[9][0], tmp[9][1], 
-                        0,         0,         0,         0,         0,         0,         0,         0,
-                        0,         0,         0,         0,         0,         0,         0,         0
                     ])
                 elif num_of_pixels == 14:
                     label_coordinate_list.append([
@@ -383,16 +388,25 @@ def create_box_dataset(args):
                         tmp[3][0], tmp[3][1], tmp[4][0], tmp[4][1], tmp[5][0], tmp[5][1],
                         tmp[6][0], tmp[6][1], tmp[7][0], tmp[7][1], tmp[8][0], tmp[8][1], tmp[9][0], tmp[9][1], 
                         tmp[10][0], tmp[10][1], tmp[11][0], tmp[11][1], tmp[12][0], tmp[12][1], tmp[13][0], tmp[13][1],
-                        0,         0,         0,         0,         0,         0,         0,         0
                     ])
                 elif num_of_pixels == 18:
                     label_coordinate_list.append([
-                        f'{image_num}_pad.png',
+                        f'{image_num}_pad.png',num_of_pixels,
                         tmp[0][0], tmp[0][1], tmp[1][0], tmp[1][1], tmp[2][0], tmp[2][1],
                         tmp[3][0], tmp[3][1], tmp[4][0], tmp[4][1], tmp[5][0], tmp[5][1],
-                        tmp[0][0], tmp[0][1], tmp[1][0], tmp[1][1], tmp[2][0], tmp[2][1], tmp[3][0], tmp[3][1], 
+                        tmp[6][0], tmp[6][1], tmp[7][0], tmp[7][1], tmp[8][0], tmp[8][1], tmp[9][0], tmp[9][1], 
                         tmp[10][0], tmp[10][1], tmp[11][0], tmp[11][1], tmp[12][0], tmp[12][1], tmp[13][0], tmp[13][1],
                         tmp[14][0], tmp[14][1], tmp[15][0], tmp[15][1], tmp[16][0], tmp[16][1], tmp[17][0], tmp[17][1]
+                    ])
+                elif num_of_pixels == 22:
+                    label_coordinate_list.append([
+                        f'{image_num}_pad.png',num_of_pixels,
+                        tmp[0][0], tmp[0][1], tmp[1][0], tmp[1][1], tmp[2][0], tmp[2][1],
+                        tmp[3][0], tmp[3][1], tmp[4][0], tmp[4][1], tmp[5][0], tmp[5][1],
+                        tmp[6][0], tmp[6][1], tmp[7][0], tmp[7][1], tmp[8][0], tmp[8][1], tmp[9][0], tmp[9][1], 
+                        tmp[10][0], tmp[10][1], tmp[11][0], tmp[11][1], tmp[12][0], tmp[12][1], tmp[13][0], tmp[13][1],
+                        tmp[14][0], tmp[14][1], tmp[15][0], tmp[15][1], tmp[16][0], tmp[16][1], tmp[17][0], tmp[17][1],
+                        tmp[18][0], tmp[18][1], tmp[19][0], tmp[19][1], tmp[20][0], tmp[20][1], tmp[21][0], tmp[21][1],
                     ])
                 
     fields = ['image','data',
@@ -401,6 +415,7 @@ def create_box_dataset(args):
         'box_0_y', 'box_0_x', 'box_1_y', 'box_1_x', 'box_2_y', 'box_2_x', 'box_3_y', 'box_3_x', 
         'box_4_y', 'box_4_x', 'box_5_y', 'box_5_x', 'box_6_y', 'box_6_x', 'box_7_y', 'box_7_x',
         'box_8_y', 'box_8_x', 'box_9_y', 'box_9_x', 'box_10_y', 'box_10_x', 'box_11_y', 'box_11_x',
+        'box_12_y', 'box_12_x', 'box_13_y', 'box_13_x', 'box_14_y', 'box_14_x', 'box_15_y', 'box_15_x',
     ]
 
     with open(f'./xlsx/dataset.csv', 'w', newline='') as f:
