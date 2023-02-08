@@ -51,6 +51,10 @@ class CustomDataset(Dataset):
         label_3_y, label_3_x = self.df['label_3_y'][idx], self.df['label_3_x'][idx]
         label_4_y, label_4_x = self.df['label_4_y'][idx], self.df['label_4_x'][idx]
         label_5_y, label_5_x = self.df['label_5_y'][idx], self.df['label_5_x'][idx]
+        label_list = [
+            label_0_y, label_0_x, label_1_y, label_1_x, label_2_y, label_2_x,
+            label_3_y, label_3_x, label_4_y, label_4_x, label_5_y, label_5_x,
+        ]
 
         if self.delete_method == "letter":
             letter_y,  letter_x  = self.df['letter_y'][idx],  self.df['letter_x'][idx]
@@ -133,7 +137,7 @@ class CustomDataset(Dataset):
         else:
             masks = torch.stack([mask0, mask1, mask2, mask3, mask4, mask5], dim=0)
 
-        return image, masks, image_dir
+        return image, masks, image_dir, label_list
 
 def dilate_pixel(mask, label_y, label_x, args):
     mask[label_y][label_x] = 1.0

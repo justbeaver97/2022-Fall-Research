@@ -12,12 +12,19 @@ Reference:
         https://stackoverflow.com/questions/64364239/pytorch-error-valueerror-pic-should-be-2-3-dimensional-got-4-dimensions
     1 channel to 3 channel:
         https://stackoverflow.com/questions/71957324/is-there-a-pytorch-transform-to-go-from-1-channel-data-to-3-channels    
-    TypeError: Cannot handle this data type: (1, 1, 512), <f4
+    TypeError: Cannot handle this data type: (1, 1, 512), <f4:
         https://stackoverflow.com/questions/60138697/typeerror-cannot-handle-this-data-type-1-1-3-f4
-    KeyError: ((1, 1, 512), '|u1')
+    KeyError: ((1, 1, 512), '|u1'):
         https://stackoverflow.com/questions/57621092/keyerror-1-1-1280-u1-while-using-pils-image-fromarray-pil
-    permute tensor
+    permute tensor:
         https://stackoverflow.com/questions/71880540/how-to-change-an-image-which-has-dimensions-512-512-3-to-a-tensor-of-size
+    index of max value of tensor:
+        https://stackoverflow.com/questions/71788996/how-can-i-find-multiple-maximum-indices-of-a-torch-tensor
+    draw circle in image:
+        https://dsbook.tistory.com/102
+    >  - Expected Ptr<cv::UMat> for argument 'img':
+        https://github.com/opencv/opencv/issues/18120
+        cv2 functions expects numpy array
 """
 
 import os
@@ -25,9 +32,12 @@ import torch
 import torchvision
 import matplotlib.pyplot as plt
 import torchvision.transforms.functional as TF
+import numpy as np
+import cv2
 
 from tqdm import tqdm
 from PIL import Image
+from sklearn.metrics import mean_squared_error as mse
 
 
 def save_label_image(label_tensor, args):
@@ -52,7 +62,7 @@ def save_heatmap(preds, preds_binary, args, epoch):
             torchvision.utils.save_image(preds_binary[0][i], f'./plot_results/{args.wandb_name}/epoch_{epoch}.png')
 
 
-def save_overlaid_image(args, idx, predicted_label, data_path):
+def save_overlaid_image(args, idx, predicted_label, data_path, highest_probability_pixels):
     image_path = f'{args.padded_image}/{data_path}'
     if args.delete_method == 'letter': num_channels = 7
     else:                              num_channels = 6
@@ -64,11 +74,15 @@ def save_overlaid_image(args, idx, predicted_label, data_path):
         overlaid_image = Image.blend(original, background , 0.3)
         overlaid_image.save(f'./plot_results/{args.wandb_name}/overlaid/label{i}/val{idx}_overlaid.png')
 
+        x, y = int(highest_probability_pixels[i][0][0].detach().cpu()), int(highest_probability_pixels[i][0][1].detach().cpu())
+        pixel_overlaid_image = Image.fromarray(cv2.circle(np.array(original), (x,y), 15, (255, 0, 0),-1))
+        pixel_overlaid_image.save(f'./plot_results/{args.wandb_name}/overlaid/label{i}/val{idx}_pixel_overlaid.png')
 
-def save_predictions_as_images(args, loader, model, epoch, device="cuda"):
+
+def save_predictions_as_images(args, loader, model, epoch, highest_probability_pixels, device="cuda"):
     model.eval()
 
-    for idx, (image, label, data_path) in enumerate(tqdm(loader)):
+    for idx, (image, label, data_path, _) in enumerate(tqdm(loader)):
         image = image.to(device=device)
         label = label.to(device=device)
         data_path = data_path[0]
@@ -86,9 +100,34 @@ def save_predictions_as_images(args, loader, model, epoch, device="cuda"):
         if idx == 0:
             save_heatmap(preds, preds_binary, args, epoch)
         if epoch % 10 == 0:
-            save_overlaid_image(args, idx, preds_binary, data_path)
+            save_overlaid_image(args, idx, preds_binary, data_path, highest_probability_pixels)
 
     model.train()
+
+
+def calculate_mse_predicted_to_annotation(label_list, index_list):
+    mse_value = 0
+    index_list = index_list
+    for i in range(len(index_list)):
+        ## todo: if more than 1 for index_list[i]
+        true_x, true_y = int(label_list[2*i+1]), int(label_list[2*i+0])
+        pred_x, pred_y = int(index_list[i][0][0].detach().cpu()), int(index_list[i][0][1].detach().cpu())
+        mse_value += mse([true_x, true_y],[pred_x, pred_y])
+
+    return mse_value
+
+
+def extract_highest_probability_pixel(args, prediction_tensor, label_list): 
+    if args.delete_method == 'letter': num_channels = 7
+    else:                              num_channels = 6
+    index_list = []
+    for i in range(num_channels):
+        index = (prediction_tensor[0][i] == torch.max(prediction_tensor[0][i])).nonzero()
+        index_list.append(index)
+
+    mse_value = calculate_mse_predicted_to_annotation(label_list, index_list)
+
+    return index_list, mse_value
 
 
 def check_accuracy(loader, model, args, epoch, device):
@@ -101,12 +140,17 @@ def check_accuracy(loader, model, args, epoch, device):
     model.eval()
 
     with torch.no_grad():
-        for image, label, _ in tqdm(loader):
+        for image, label, _, label_list in tqdm(loader):
             image = image.to(device)
             label = label.to(device)
             
             if args.pretrained: preds = model(image)
             else:               preds = torch.sigmoid(model(image))
+
+            ## extract the pixel with highest probability value
+            highest_probability_pixels, highest_probability_mse = extract_highest_probability_pixel(args, preds, label_list)
+
+            ## make predictions to be 0. or 1.
             preds = (preds > 0.5).float()
 
             ## compare only labels
@@ -144,7 +188,7 @@ def check_accuracy(loader, model, args, epoch, device):
 
     model.train()
 
-    return label_accuracy, label_accuracy2, whole_image_accuracy, predict_as_label, dice
+    return model, label_accuracy, label_accuracy2, whole_image_accuracy, predict_as_label, dice, highest_probability_pixels, highest_probability_mse
 
 
 def create_directories(args, folder='./plot_results'):

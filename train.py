@@ -5,6 +5,7 @@ reference:
 
 import torch
 import torch.nn as nn
+import torchvision
 import numpy as np
 
 from tqdm import tqdm
@@ -17,10 +18,10 @@ from dataset import load_data
 def train_function(args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, optimizer, loader):
     loop = tqdm(loader)
 
-    for batch_idx, (data, targets, image_dir) in enumerate(loop):
+    for batch_idx, (data, targets, image_dir, _) in enumerate(loop):
         data    = data.to(device=DEVICE)
         targets = targets.float().to(device=DEVICE)
-        # save_image(data, f'./tmp/tmp_image/{image_dir[0].split(".")[0]}.png')
+        # torchvision.utils.save_image(data, f'./tmp/tmp_image_5/{image_dir[0].split(".")[0]}.png')
 
         if args.pretrained: predictions = model(data)
         else:               predictions = torch.sigmoid(model(data))
@@ -74,17 +75,17 @@ def train(args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, optimizer, train
         loss, loss_pixel, loss_geometry = train_function(
             args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, optimizer, train_loader
         )
-        label_accuracy, label_accuracy2, segmentation_accuracy, predict_as_label, dice_score = check_accuracy(
+        model, label_accuracy, label_accuracy2, segmentation_accuracy, predict_as_label, dice_score, highest_probability_pixels, highest_probability_mse = check_accuracy(
             val_loader, model, args, epoch, device=DEVICE
         )
 
         if args.wandb:
             if epoch % 10 == 0: 
                 log_results(
-                    args, loss, loss_pixel, loss_geometry, label_accuracy, label_accuracy2, segmentation_accuracy, predict_as_label, dice_score
+                    args, loss, loss_pixel, loss_geometry, label_accuracy, label_accuracy2, segmentation_accuracy, predict_as_label, dice_score, highest_probability_mse
                 )
             else:               
-                log_results_no_label(args, loss, loss_pixel, loss_geometry, segmentation_accuracy, dice_score)
+                log_results_no_label(args, loss, loss_pixel, loss_geometry, segmentation_accuracy, dice_score, highest_probability_mse)
 
         checkpoint = {
             "state_dict": model.state_dict(),
@@ -97,8 +98,8 @@ def train(args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, optimizer, train
         print("Current loss ", loss)
         if best_loss > loss:
             print("=====New best model=====")
-            torch.save(checkpoint, f"./results/best.pth")
-            save_predictions_as_images(args, val_loader, model, epoch, device=DEVICE)
+            # torch.save(checkpoint, f"./results/best.pth")
+            save_predictions_as_images(args, val_loader, model, epoch, highest_probability_pixels, device=DEVICE)
             best_loss, count = loss, 0
         else:
             count += 1

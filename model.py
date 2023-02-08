@@ -79,8 +79,8 @@ class UNET(nn.Module):
 
 def get_model(args, DEVICE):
     print("---------- Loading Model Not Pretrained ----------")
-    if not args.delete_method:  num_out_channels = 6
-    else:                       num_out_channels = 7
+    if args.delete_method == "letter":  num_out_channels = 7
+    else:                               num_out_channels = 6
     return UNET(in_channels=3, out_channels=num_out_channels).to(DEVICE)
 
 
