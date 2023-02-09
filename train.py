@@ -67,9 +67,9 @@ def train(args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, optimizer, train
             if args.progressive_weight:
                 ## todo: after reduce in the dilation iteration,
                 ## change the weight in the loss function 80 - 5, 60 - 10, 40 - 10, 20 - 10, 10 - 30
-                if args.dilate <= 15:   args.loss_class_weight = 30
-                elif args.dilate <= 60: args.loss_class_weight = 10
-                else:                     args.loss_class_weight = 5
+                if args.dilate <= 15:   args.loss_class_weight = 40
+                elif args.dilate <= 60: args.loss_class_weight = 30
+                else:                     args.loss_class_weight = 20
                 loss_fn_pixel = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([args.loss_class_weight], device=DEVICE))
 
         loss, loss_pixel, loss_geometry = train_function(

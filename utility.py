@@ -74,9 +74,10 @@ def save_overlaid_image(args, idx, predicted_label, data_path, highest_probabili
         overlaid_image = Image.blend(original, background , 0.3)
         overlaid_image.save(f'./plot_results/{args.wandb_name}/overlaid/label{i}/val{idx}_overlaid.png')
 
-        x, y = int(highest_probability_pixels[i][0][0].detach().cpu()), int(highest_probability_pixels[i][0][1].detach().cpu())
-        pixel_overlaid_image = Image.fromarray(cv2.circle(np.array(original), (x,y), 15, (255, 0, 0),-1))
-        pixel_overlaid_image.save(f'./plot_results/{args.wandb_name}/overlaid/label{i}/val{idx}_pixel_overlaid.png')
+        if i != 6:
+            x, y = int(highest_probability_pixels[i][0][0].detach().cpu()), int(highest_probability_pixels[i][0][1].detach().cpu())
+            pixel_overlaid_image = Image.fromarray(cv2.circle(np.array(original), (x,y), 15, (255, 0, 0),-1))
+            pixel_overlaid_image.save(f'./plot_results/{args.wandb_name}/overlaid/label{i}/val{idx}_pixel_overlaid.png')
 
 
 def save_predictions_as_images(args, loader, model, epoch, highest_probability_pixels, device="cuda"):
@@ -118,10 +119,10 @@ def calculate_mse_predicted_to_annotation(label_list, index_list):
 
 
 def extract_highest_probability_pixel(args, prediction_tensor, label_list): 
-    if args.delete_method == 'letter': num_channels = 7
-    else:                              num_channels = 6
+    # if args.delete_method == 'letter': num_channels = 7
+    # else:                              num_channels = 6
     index_list = []
-    for i in range(num_channels):
+    for i in range(6):
         index = (prediction_tensor[0][i] == torch.max(prediction_tensor[0][i])).nonzero()
         index_list.append(index)
 
