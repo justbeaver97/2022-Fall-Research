@@ -50,7 +50,7 @@ def save_label_image(label_tensor, args):
 
 
 def save_heatmap(preds, preds_binary, args, epoch):
-    if args.only_pixel and epoch % 10 == 0:
+    if args.only_pixel and (epoch % 10 == 0 or epoch % 50 == 49):
         for i in range(len(preds[0])):
             plt.imshow(preds[0][i].detach().cpu().numpy(), cmap='hot', interpolation='nearest')
             plt.savefig(f'./plot_results/{args.wandb_name}/label{i}/epoch_{epoch}_heatmap.png')
@@ -62,7 +62,7 @@ def save_heatmap(preds, preds_binary, args, epoch):
             torchvision.utils.save_image(preds_binary[0][i], f'./plot_results/{args.wandb_name}/epoch_{epoch}.png')
 
 
-def save_overlaid_image(args, idx, predicted_label, data_path, highest_probability_pixels):
+def save_overlaid_image(args, idx, predicted_label, data_path, highest_probability_pixels, epoch):
     image_path = f'{args.padded_image}/{data_path}'
     if args.delete_method == 'letter': num_channels = 7
     else:                              num_channels = 6
@@ -73,6 +73,7 @@ def save_overlaid_image(args, idx, predicted_label, data_path, highest_probabili
         background = TF.to_pil_image(torch.cat((background, background, background), dim=0))
         overlaid_image = Image.blend(original, background , 0.3)
         overlaid_image.save(f'./plot_results/{args.wandb_name}/overlaid/label{i}/val{idx}_overlaid.png')
+        overlaid_image.save(f'./plot_results/{args.wandb_name}/label{i}/epoch_{epoch}_overlaid.png')
 
         if i != 6:
             x, y = int(highest_probability_pixels[i][0][0].detach().cpu()), int(highest_probability_pixels[i][0][1].detach().cpu())
@@ -100,8 +101,8 @@ def save_predictions_as_images(args, loader, model, epoch, highest_probability_p
             save_label_image(label, args)
         if idx == 0:
             save_heatmap(preds, preds_binary, args, epoch)
-        if epoch % 10 == 0:
-            save_overlaid_image(args, idx, preds_binary, data_path, highest_probability_pixels)
+        if epoch % 10 == 0 or epoch % 50 == 49:
+            save_overlaid_image(args, idx, preds_binary, data_path, highest_probability_pixels, epoch)
 
     model.train()
 
@@ -155,7 +156,7 @@ def check_accuracy(loader, model, args, epoch, device):
             preds = (preds > 0.5).float()
 
             ## compare only labels
-            if epoch % 10 == 0 and args.wandb:
+            if (epoch % 10 == 0 or epoch % 50 == 49) and args.wandb:
                 for i in range(len(preds[0][0])):
                     for j in range(len(preds[0][0][i])):
                         if float(label[0][0][i][j]) == 1.0:
@@ -177,7 +178,7 @@ def check_accuracy(loader, model, args, epoch, device):
     whole_image_accuracy = num_correct/num_pixels*100
     dice = dice_score/len(loader)
 
-    if epoch % 10 == 0:
+    if epoch % 10 == 0 or epoch % 50 == 49:
         label_accuracy = (num_labels_correct/(num_labels+(1e-8))) * 100        ## from GT, how many of them were predicted
         label_accuracy2 = (prediction_correct/(predict_as_label+(1e-8))) * 100 ## from prediction, how many of them were GT
         print(f"Number of pixels predicted as label: {predict_as_label}")
@@ -215,3 +216,10 @@ def create_directories(args, folder='./plot_results'):
 def printsave(*a):
     file = open('tmp/error_log.txt','a')
     print(*a,file=file)
+
+def calculate_number_of_dilated_pixel(k):
+    sum = 0
+    for i in range(k+1):
+        if i == 0: sum += 1
+        else:      sum += 4 * i
+    return sum

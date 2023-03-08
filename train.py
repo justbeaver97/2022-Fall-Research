@@ -11,7 +11,7 @@ import numpy as np
 from tqdm import tqdm
 from spatial_mean import SpatialMean_CHAN
 from log import log_results, log_results_no_label
-from utility import save_predictions_as_images, check_accuracy, create_directories
+from utility import save_predictions_as_images, check_accuracy, create_directories, calculate_number_of_dilated_pixel
 from dataset import load_data
 
 
@@ -60,16 +60,16 @@ def train(args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, optimizer, train
 
         ## todo: recall dataloader
         if epoch % 50 == 0:
-            if args.progressive_erosion:
+            if args.progressive_erosion and epoch != 0:
                 args.dilate = args.dilate - args.dilation_decrease
                 train_loader, val_loader = load_data(args)
 
             if args.progressive_weight:
-                ## todo: after reduce in the dilation iteration,
-                ## change the weight in the loss function 80 - 5, 60 - 10, 40 - 10, 20 - 10, 10 - 30
-                if args.dilate <= 15:   args.loss_class_weight = 40
-                elif args.dilate <= 60: args.loss_class_weight = 30
-                else:                     args.loss_class_weight = 20
+                image_size = args.image_resize * args.image_resize
+                num_of_dil_pixels = calculate_number_of_dilated_pixel(args.dilate)
+                w0 = (image_size * 100)/(image_size - num_of_dil_pixels)
+                w1 = (image_size * 100)/(num_of_dil_pixels)
+                args.loss_class_weight = w1/w0
                 loss_fn_pixel = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([args.loss_class_weight], device=DEVICE))
 
         loss, loss_pixel, loss_geometry = train_function(
@@ -80,7 +80,7 @@ def train(args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, optimizer, train
         )
 
         if args.wandb:
-            if epoch % 10 == 0: 
+            if epoch % 10 == 0 or epoch % 50 == 49: 
                 log_results(
                     args, loss, loss_pixel, loss_geometry, label_accuracy, label_accuracy2, segmentation_accuracy, predict_as_label, dice_score, highest_probability_mse
                 )
@@ -92,14 +92,18 @@ def train(args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, optimizer, train
             "optimizer":  optimizer.state_dict(),
         }
 
+        ## Saving .pth 
         # if pth_save_point % 5 == 0: torch.save(checkpoint, f"./results/UNet_Epoch_{epoch}.pth")
         # pth_save_point += 1
 
         print("Current loss ", loss)
+
+        # for short paper, always save
+        save_predictions_as_images(args, val_loader, model, epoch, highest_probability_pixels, device=DEVICE)
         if best_loss > loss:
             print("=====New best model=====")
             # torch.save(checkpoint, f"./results/best.pth")
-            save_predictions_as_images(args, val_loader, model, epoch, highest_probability_pixels, device=DEVICE)
+            # save_predictions_as_images(args, val_loader, model, epoch, highest_probability_pixels, device=DEVICE)
             best_loss, count = loss, 0
         else:
             count += 1
