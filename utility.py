@@ -29,6 +29,7 @@ Reference:
 
 import os
 import torch
+import torch.nn as nn
 import torchvision
 import matplotlib.pyplot as plt
 import torchvision.transforms.functional as TF
@@ -38,6 +39,7 @@ import cv2
 from tqdm import tqdm
 from PIL import Image
 from sklearn.metrics import mean_squared_error as mse
+from spatial_mean import SpatialMean_CHAN
 
 
 def save_label_image(label_tensor, args):
@@ -62,7 +64,7 @@ def save_heatmap(preds, preds_binary, args, epoch):
             torchvision.utils.save_image(preds_binary[0][i], f'./plot_results/{args.wandb_name}/epoch_{epoch}.png')
 
 
-def save_overlaid_image(args, idx, predicted_label, data_path, highest_probability_pixels, epoch):
+def save_overlaid_image(args, idx, predicted_label, data_path, highest_probability_pixels_list, epoch):
     image_path = f'{args.padded_image}/{data_path}'
     if args.delete_method == 'letter': num_channels = 7
     else:                              num_channels = 6
@@ -76,12 +78,13 @@ def save_overlaid_image(args, idx, predicted_label, data_path, highest_probabili
         overlaid_image.save(f'./plot_results/{args.wandb_name}/label{i}/epoch_{epoch}_overlaid.png')
 
         if i != 6:
-            x, y = int(highest_probability_pixels[i][0][0].detach().cpu()), int(highest_probability_pixels[i][0][1].detach().cpu())
+            # x, y = int(highest_probability_pixels_list[i][0][0].detach().cpu()), int(highest_probability_pixels_list[i][0][1].detach().cpu())
+            x, y = int(highest_probability_pixels_list[idx][0][i][0]), int(highest_probability_pixels_list[idx][0][i][1])
             pixel_overlaid_image = Image.fromarray(cv2.circle(np.array(original), (x,y), 15, (255, 0, 0),-1))
             pixel_overlaid_image.save(f'./plot_results/{args.wandb_name}/overlaid/label{i}/val{idx}_pixel_overlaid.png')
 
 
-def save_predictions_as_images(args, loader, model, epoch, highest_probability_pixels, device="cuda"):
+def save_predictions_as_images(args, loader, model, epoch, highest_probability_pixels_list, device="cuda"):
     model.eval()
 
     for idx, (image, label, data_path, _) in enumerate(tqdm(loader)):
@@ -102,20 +105,32 @@ def save_predictions_as_images(args, loader, model, epoch, highest_probability_p
         if idx == 0:
             save_heatmap(preds, preds_binary, args, epoch)
         if epoch % 10 == 0 or epoch % 50 == 49:
-            save_overlaid_image(args, idx, preds_binary, data_path, highest_probability_pixels, epoch)
+            save_overlaid_image(args, idx, preds_binary, data_path, highest_probability_pixels_list, epoch)
 
     model.train()
 
 
-def calculate_mse_predicted_to_annotation(label_list, index_list):
+def calculate_mse_predicted_to_annotation(highest_probability_pixels, label_list):
     mse_value = 0
-    index_list = index_list
-    for i in range(len(index_list)):
-        ## todo: if more than 1 for index_list[i]
-        true_x, true_y = int(label_list[2*i+1]), int(label_list[2*i+0])
-        pred_x, pred_y = int(index_list[i][0][0].detach().cpu()), int(index_list[i][0][1].detach().cpu())
-        mse_value += mse([true_x, true_y],[pred_x, pred_y])
+    # for i in range(len(index_list)):
+    #     ## todo: if more than 1 for index_list[i]
+    #     true_x, true_y = int(label_list[2*i+1]), int(label_list[2*i+0])
+    #     # pred_x, pred_y = int(index_list[i][0][0].detach().cpu()), int(index_list[i][0][1].detach().cpu())
+    #     pred_x, pred_y = int(index_list[0][i][0].detach().cpu()), int(index_list[0][i][1].detach().cpu())
+    #     mse_value += mse([true_x, true_y],[pred_x, pred_y])
 
+    highest_probability_pixels = highest_probability_pixels.squeeze(0).reshape(12,1).detach().cpu()
+    label_list = np.array(torch.Tensor(label_list), dtype=object).reshape(12,1)
+    label_list = np.ndarray.tolist(label_list)
+    ordered_label_list = [
+        label_list[1], label_list[0],
+        label_list[3], label_list[2],
+        label_list[5], label_list[4],
+        label_list[7], label_list[6],
+        label_list[9], label_list[8],
+        label_list[11], label_list[10],
+    ]
+    mse_value = mse(highest_probability_pixels, ordered_label_list)
     return mse_value
 
 
@@ -127,7 +142,7 @@ def extract_highest_probability_pixel(args, prediction_tensor, label_list):
         index = (prediction_tensor[0][i] == torch.max(prediction_tensor[0][i])).nonzero()
         index_list.append(index)
 
-    mse_value = calculate_mse_predicted_to_annotation(label_list, index_list)
+    mse_value = calculate_mse_predicted_to_annotation(index_list, label_list)
 
     return index_list, mse_value
 
@@ -139,6 +154,8 @@ def check_accuracy(loader, model, args, epoch, device):
     num_labels, num_labels_correct = 0, 0
     predict_as_label, prediction_correct  = 0, 0
     dice_score = 0
+    highest_probability_pixels_list = []
+    highest_probability_mse_total = 0
     model.eval()
 
     with torch.no_grad():
@@ -149,8 +166,15 @@ def check_accuracy(loader, model, args, epoch, device):
             if args.pretrained: preds = model(image)
             else:               preds = torch.sigmoid(model(image))
 
-            ## extract the pixel with highest probability value
-            highest_probability_pixels, highest_probability_mse = extract_highest_probability_pixel(args, preds, label_list)
+            # ## extract the pixel with highest probability value
+            # highest_probability_pixels, highest_probability_mse = extract_highest_probability_pixel(args, preds, label_list)
+
+            ## extract pixel using spatial mean & calculating distance
+            predict_spatial_mean_function = SpatialMean_CHAN(list(preds.shape[1:]))
+            highest_probability_pixels    = predict_spatial_mean_function(preds)
+            highest_probability_pixels_list.append(highest_probability_pixels.detach().cpu().numpy())
+            highest_probability_mse       = calculate_mse_predicted_to_annotation(highest_probability_pixels, label_list)
+            highest_probability_mse_total += highest_probability_mse
 
             ## make predictions to be 0. or 1.
             preds = (preds > 0.5).float()
@@ -187,10 +211,10 @@ def check_accuracy(loader, model, args, epoch, device):
         
     print(f"Got {num_correct}/{num_pixels} with acc {whole_image_accuracy:.2f}")
     print(f"Dice score: {dice}")
-
+    print(f"Pixel to Pixel Distance: {highest_probability_mse_total/len(loader)}")
     model.train()
 
-    return model, label_accuracy, label_accuracy2, whole_image_accuracy, predict_as_label, dice, highest_probability_pixels, highest_probability_mse
+    return model, label_accuracy, label_accuracy2, whole_image_accuracy, predict_as_label, dice, highest_probability_pixels_list, highest_probability_mse_total
 
 
 def create_directories(args, folder='./plot_results'):
