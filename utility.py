@@ -110,15 +110,7 @@ def save_predictions_as_images(args, loader, model, epoch, highest_probability_p
     model.train()
 
 
-def calculate_mse_predicted_to_annotation(highest_probability_pixels, label_list):
-    mse_value = 0
-    # for i in range(len(index_list)):
-    #     ## todo: if more than 1 for index_list[i]
-    #     true_x, true_y = int(label_list[2*i+1]), int(label_list[2*i+0])
-    #     # pred_x, pred_y = int(index_list[i][0][0].detach().cpu()), int(index_list[i][0][1].detach().cpu())
-    #     pred_x, pred_y = int(index_list[0][i][0].detach().cpu()), int(index_list[0][i][1].detach().cpu())
-    #     mse_value += mse([true_x, true_y],[pred_x, pred_y])
-
+def calculate_mse_predicted_to_annotation(highest_probability_pixels, label_list, mse_list):
     highest_probability_pixels = highest_probability_pixels.squeeze(0).reshape(12,1).detach().cpu()
     label_list = np.array(torch.Tensor(label_list), dtype=object).reshape(12,1)
     label_list = np.ndarray.tolist(label_list)
@@ -131,7 +123,20 @@ def calculate_mse_predicted_to_annotation(highest_probability_pixels, label_list
         label_list[11], label_list[10],
     ]
     mse_value = mse(highest_probability_pixels, ordered_label_list)
+
+    # for i in range(6):
+    #     mse_list[i].append(mse(highest_probability_pixels[2*i:2*(i+1)]  ,ordered_label_list[2*i:2*(i+1)]))
+
+    # mse_0 = mse(highest_probability_pixels[0:2]  ,ordered_label_list[0:2])
+    # mse_1 = mse(highest_probability_pixels[2:4]  ,ordered_label_list[2:4])
+    # mse_2 = mse(highest_probability_pixels[4:6]  ,ordered_label_list[4:6])
+    # mse_3 = mse(highest_probability_pixels[6:8]  ,ordered_label_list[6:8])
+    # mse_4 = mse(highest_probability_pixels[8:10] ,ordered_label_list[8:10])
+    # mse_5 = mse(highest_probability_pixels[10:12],ordered_label_list[10:12])
+    # mse_list = [mse_0, mse_1, mse_2, mse_3, mse_4, mse_5]
+
     return mse_value
+    # return mse_value, mse_list
 
 
 def extract_highest_probability_pixel(args, prediction_tensor, label_list): 
@@ -156,6 +161,11 @@ def check_accuracy(loader, model, args, epoch, device):
     dice_score = 0
     highest_probability_pixels_list = []
     highest_probability_mse_total = 0
+
+    # if args.delete_method == 'letter': num_channels = 7
+    # else:                              num_channels = 6
+    # mse_list = [[]]*6
+
     model.eval()
 
     with torch.no_grad():
@@ -173,7 +183,12 @@ def check_accuracy(loader, model, args, epoch, device):
             predict_spatial_mean_function = SpatialMean_CHAN(list(preds.shape[1:]))
             highest_probability_pixels    = predict_spatial_mean_function(preds)
             highest_probability_pixels_list.append(highest_probability_pixels.detach().cpu().numpy())
-            highest_probability_mse       = calculate_mse_predicted_to_annotation(highest_probability_pixels, label_list)
+            highest_probability_mse       = calculate_mse_predicted_to_annotation(
+                highest_probability_pixels, label_list, _
+            )
+            # highest_probability_mse, mse_list       = calculate_mse_predicted_to_annotation(
+            #     highest_probability_pixels, label_list, mse_list
+            # )
             highest_probability_mse_total += highest_probability_mse
 
             ## make predictions to be 0. or 1.

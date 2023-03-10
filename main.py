@@ -16,10 +16,13 @@ import torch.nn as nn
 import torch.optim as optim
 
 import preprocess
+from argument import arg_as_list
 from dataset import load_data, create_dataset
 from model import get_model, get_pretrained_model
 from train import train
 from log import initiate_wandb
+from utility import calculate_number_of_dilated_pixel
+
 
 def main(args):
     preprocess.customize_seed(args.seed)
@@ -58,14 +61,19 @@ def main(args):
         model = get_model(args, DEVICE)
 
     ## 2 gpu - batch size 24 / 1 gpu - batch size 12 
-    model = nn.DataParallel(model)
+    # model = nn.DataParallel(model)
     model.cuda()
 
     ## set loss function & optimizer
     if args.progressive_weight:
         loss_fn_pixel = 0
     else:
-        loss_fn_pixel = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([args.loss_class_weight], device=DEVICE))
+        # image_size = args.image_resize * args.image_resize
+        # num_of_dil_pixels = calculate_number_of_dilated_pixel(args.dilate)
+        # w0 = (image_size * 100)/(image_size - num_of_dil_pixels)
+        # w1 = (image_size * 100)/(num_of_dil_pixels)
+        weight = 1
+        loss_fn_pixel = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([weight], device=DEVICE))
     loss_fn_geometry = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
@@ -77,7 +85,7 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    ## boolean arguments stored false
+    ## boolean arguments
     parser.add_argument('--data_preprocessing', action='store_true', help='whether to do data preprocessing or not')
     parser.add_argument('--pad_image', action='store_true', help='whether to pad the original image')
     parser.add_argument('--create_dataset', action='store_true', help='whether to create dataset or not')
@@ -85,8 +93,6 @@ if __name__ == '__main__':
     parser.add_argument('--only_geom', action='store_true', help='whether to use only geometry loss')
     parser.add_argument('--progressive_erosion', action='store_true', help='whether to use progressive erosion')
     parser.add_argument('--progressive_weight', action='store_true', help='whether to use progressive weight')
-
-    ## boolean arguments stored true
     parser.add_argument('--pretrained', action='store_true', help='whether to pretrained model')
     parser.add_argument('--wandb', action='store_true', help='whether to use wandb or not')
 
@@ -109,6 +115,7 @@ if __name__ == '__main__':
     parser.add_argument('--dataset_split', type=int, default=9, help='dataset split ratio')
     parser.add_argument('--dilate', type=int, default=2, help='dilate iteration')
     parser.add_argument('--dilation_decrease', type=int, default=5, help='dilation decrease in progressive erosion')
+    parser.add_argument('--dilation_epoch', type=int, default=50, help='dilation per epoch')
     parser.add_argument('--image_path', type=str, default="./overlay_only", help='path to save overlaid data')
     parser.add_argument('--image_resize', type=int, default=512, help='image resize value')
     parser.add_argument('--batch_size', type=int, default=24, help='batch size')
@@ -122,7 +129,8 @@ if __name__ == '__main__':
     parser.add_argument('--epochs', type=int, default=1000, help='number of epochs')
     parser.add_argument('--patience', type=int, default=10, help='early stopping patience')
     parser.add_argument('--loss_weight', type=int, default=1, help='weight of the loss function')
-    parser.add_argument('--loss_class_weight', type=float, default=1, help='weight for each class of the loss function')
+    # parser.add_argument('--loss_class_weight', type=float, default=1, help='weight for each class of the loss function')
+    # parser.add_argument("--loss_class_weight_list", type=arg_as_list, default=[], help='progressive weight')
 
     ## hyperparameters - results
     parser.add_argument('--threshold', type=float, default=0.5, help='threshold for binary prediction')
