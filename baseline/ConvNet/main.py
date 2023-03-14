@@ -22,12 +22,11 @@ def customize_seed(seed):
 
 
 def initiate_wandb(args):
-    if args.wandb:
-        wandb.init(
-            project=f"{args.wandb_project}", 
-            entity=f"{args.wandb_entity}",
-            name=f"{args.wandb_name}"
-        )
+    wandb.init(
+        project=f"{args.wandb_project}", 
+        entity=f"{args.wandb_entity}",
+        name=f"{args.wandb_name}"
+    )
 
 
 def main(args):
@@ -35,7 +34,7 @@ def main(args):
     print(f'Torch is running on {DEVICE}')
 
     customize_seed(args.seed)
-    # initiate_wandb(args)
+    initiate_wandb(args)
 
     train_loader, val_loader = load_data(args)
     model = CNN()
