@@ -1,14 +1,12 @@
 """
 reference:
-    train process: https://github.com/aladdinpersson/Machine-Learning-Collection
+    train process: 
+        https://github.com/aladdinpersson/Machine-Learning-Collection
 """
 
 import torch
-import torch.nn as nn
-import torchvision
 import numpy as np
 import wandb
-import os
 
 from tqdm import tqdm
 from sklearn.metrics import mean_squared_error as mse
@@ -37,9 +35,7 @@ def calculate_mse_predicted_to_annotation(highest_probability_pixels, label_list
     return mse_value, mse_list
 
 
-def train(args, DEVICE, model, loss_fn, optimizer, train_loader, val_loader):
-    best_loss = np.inf
-    
+def train(args, DEVICE, model, loss_fn, optimizer, train_loader, val_loader):    
     for epoch in range(args.epochs):
         model.train()
         print(f"\nRunning Epoch # {epoch}")
@@ -69,7 +65,6 @@ def train(args, DEVICE, model, loss_fn, optimizer, train_loader, val_loader):
                 )
                 highest_probability_mse_total += highest_probability_mse
 
-        # save_predictions_as_images(args, val_loader, model, epoch, highest_probability_pixels_list, label_list_total, device=DEVICE)
         if epoch == args.epochs - 1:
             box_plot(mse_list)
 

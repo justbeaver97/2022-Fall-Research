@@ -10,6 +10,7 @@ import wandb
 from dataset import load_data
 from train import train
 
+
 def customize_seed(seed):
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
@@ -59,7 +60,7 @@ if __name__ == "__main__":
     parser.add_argument('--dataset_csv_path', type=str, default="../../xlsx/dataset.csv", help='dataset excel file path')
     parser.add_argument('--dataset_split', type=int, default=9, help='dataset split ratio')
     parser.add_argument('--image_resize', type=int, default=512, help='image resize value')
-    parser.add_argument('--batch_size', type=int, default=4, help='batch size')
+    parser.add_argument('--batch_size', type=int, default=12, help='batch size')
     
     ## hyperparameters - model
     parser.add_argument('--seed', type=int, default=2022, help='seed customization for result reproduction')
