@@ -13,8 +13,6 @@ import torch
 import torch.nn as nn
 import numpy as np
 
-from PIL import Image
-
 
 def get_emb(sin_inp):
     """
@@ -97,11 +95,8 @@ class PositionalEncodingPermute2D(nn.Module):
         self.penc = PositionalEncoding2D(channels)
 
     def forward(self, tensor):
-        # print("shape of input tensor:\n\t",tensor.shape)
         tensor = tensor.permute(0, 2, 3, 1)
-        # print("shape of tensor after permutation:\n\t",tensor.shape)
         enc = self.penc(tensor)
-        # print("shape of tensor after positional encoding:\n\t",tensor.shape)
         return enc.permute(0, 3, 1, 2)
 
     @property
@@ -109,9 +104,7 @@ class PositionalEncodingPermute2D(nn.Module):
         return self.penc.org_channels
     
 
-def positional_encoding(args, data):
-    # print("shape of input data:\n\t",data.shape)
-    
+def positional_encoding(args, data):    
     ## data [batch_size, 1, 512, 512]
     data_org = data[:]
 
@@ -121,7 +114,6 @@ def positional_encoding(args, data):
         data_pe = torch.cat((data_pe,data_org),1)
     pe2dSum = Summer(PositionalEncodingPermute2D(10))
     data_pe = pe2dSum(data_pe)
-    # print("shape of data_pe:\n\t",data_pe.shape)
 
     ## (x,y) [batch_size, 2, 512, 512]
     x = torch.Tensor([[i]*args.image_resize for i in range(args.image_resize)])
@@ -131,26 +123,20 @@ def positional_encoding(args, data):
     for i in range(data.size()[0]-1):
         x = torch.cat((x,x_tmp),0)
         y = torch.cat((y,y_tmp),0)
-    # print("shape of x:\n\t",x.shape)
-    # print("shape of y:\n\t",y.shape)
 
+    ## regenerated data: [batch_size, 13, 512, 512]
     regenerated_data = torch.cat((data_org,data_pe),1)
-    # print("shape of regenerated_data1 :\n\t",regenerated_data.shape)
     regenerated_data = torch.cat((regenerated_data,x),1)
-    # print("shape of regenerated_data2 :\n\t",regenerated_data.shape)
     regenerated_data = torch.cat((regenerated_data,y),1)
-    # print("shape of regenerated_data3 :\n\t",regenerated_data.shape)
 
     return regenerated_data
 
 
-# pe2d = PositionalEncodingPermute2D(10)
-# tmp = torch.zeros(12,512,512)
-# pe2d(tmp)
-# print(pe2d(tmp).shape)
-# print(tmp.shape)
-# tmp = tmp.unsqueeze(1)
-# print(tmp.shape)
+pe2d = PositionalEncodingPermute2D(10)
+tmp = torch.zeros(12,1,512,512)
+print(pe2d(tmp).shape)
+
+
 
 # pe2dSum = Summer(PositionalEncodingPermute2D(10))
 # pe2dSum(tmp)
@@ -171,39 +157,3 @@ def positional_encoding(args, data):
 # penc_no_sum = pe2d(a) # penc_no_sum.shape == (1, 6, 10)
 # penc_sum = pe2dSum(a)
 # # print(penc_no_sum + a == penc_sum) # True
-
-
-
-# image_path = "/home/yehyun/2022-Fall-Research/data/padded_image/0_pad.png"
-# image = np.array(Image.open(image_path).convert("L").resize((512,512)))
-# print("original image shape: \n\t",image.shape)
-
-# # image = np.transpose(image, (2,0,1))
-# image = torch.Tensor(image).unsqueeze(0)
-# image = torch.Tensor(image).unsqueeze(0)
-# print("after unsqueeze:\n\t",image.shape)
-
-# p_enc_2d = PositionalEncodingPermute2D(10)
-# print("positional encoding:\n\t",p_enc_2d(image).shape)
-
-# penc_no_sum = p_enc_2d(image)
-# p_enc_2d_model_sum = Summer(PositionalEncodingPermute2D(10))
-# penc_sum = p_enc_2d_model_sum(image)
-
-# print(image.shape, penc_no_sum.shape, penc_sum.shape)
-
-# label = [19,246,303,206,301,240,331,189,329,239,500,243]
-# # print(model(torch.Tensor(image)))
-# # print(model(image))
-
-# x = torch.Tensor([[i]*512 for i in range(512)])
-# print(x.shape)
-# x = x.unsqueeze(0).unsqueeze(0)
-# x_tmp = x[:]
-# for i in range(11):
-#     x = torch.cat((x,x_tmp),0)
-# print(x.shape)
-
-# y = torch.Tensor([[j for j in range(512)] for i in range(512)])
-# print(y.shape)
-# print(y)
