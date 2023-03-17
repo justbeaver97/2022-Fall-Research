@@ -34,18 +34,34 @@ def calculate_mse_predicted_to_annotation(highest_probability_pixels, label_list
     return mse_value, mse_list
 
 
-def extract_highest_probability_pixel(args, prediction_tensor, label_list): 
+def extract_highest_probability_pixel(args, prediction_tensor, label_list, epoch): 
     # if args.delete_method == 'letter': num_channels = 7
     # else:                              num_channels = 6
+    # index_list = []
+    # for i in range(6):
+    #     index = (prediction_tensor[0][i] == torch.max(prediction_tensor[0][i])).nonzero()
+    #     index_list.append(index)
+
+    # mse_value = calculate_mse_predicted_to_annotation(index_list, label_list)
+
+    # return index_list, mse_value
+
+    if epoch == 49:
+        for i in range(len(prediction_tensor[0])):
+            for j in range(len(prediction_tensor[0][i])):
+                for k in range(len(prediction_tensor[0][i][j])):
+                    if int(prediction_tensor[0][i][j][k]) == 1:
+                        print(i,j,k)
+
+    
     index_list = []
     for i in range(6):
         index = (prediction_tensor[0][i] == torch.max(prediction_tensor[0][i])).nonzero()
-        index_list.append(index)
+        index_list.append(index.detach().cpu().numpy())
+    print(index_list)
+    index_list = torch.Tensor(index_list)
 
-    mse_value = calculate_mse_predicted_to_annotation(index_list, label_list)
-
-    return index_list, mse_value
-
+    return index_list
 
 def check_accuracy(loader, model, args, epoch, device):
     print("=====Starting Validation=====")
@@ -75,6 +91,18 @@ def check_accuracy(loader, model, args, epoch, device):
 
             # ## extract the pixel with highest probability value
             # highest_probability_pixels, highest_probability_mse = extract_highest_probability_pixel(args, preds, label_list)
+            if epoch == 49:
+                exit()
+
+            if epoch % 10 == 5 or epoch == 49:
+                index_list = extract_highest_probability_pixel(args, preds, label_list, epoch)
+                print("index: ",index_list)
+                print("label: ",label_list)
+                a, b = calculate_mse_predicted_to_annotation(
+                    index_list, label_list, idx, mse_list
+                )
+                print("highest_probability_mse: ", a)
+                print("mse_list: ",b)
 
             ## extract pixel using spatial mean & calculating distance
             predict_spatial_mean_function = SpatialMean_CHAN(list(preds.shape[1:]))
