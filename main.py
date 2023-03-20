@@ -95,6 +95,7 @@ if __name__ == '__main__':
     parser.add_argument('--progressive_weight', action='store_true', help='whether to use progressive weight')
     parser.add_argument('--pretrained', action='store_true', help='whether to pretrained model')
     parser.add_argument('--wandb', action='store_true', help='whether to use wandb or not')
+    parser.add_argument('--no_image_save', action='store_true', help='whether to save image or not')
 
     ## get dataset
     parser.add_argument('--excel_path', type=str, default="./xlsx/dataset.xlsx", help='path to dataset excel file')

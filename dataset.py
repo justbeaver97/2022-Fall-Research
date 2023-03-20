@@ -139,6 +139,7 @@ class CustomDataset(Dataset):
 
         return image, masks, image_dir, label_list
 
+
 def dilate_pixel(mask, label_y, label_x, args):
     mask[label_y][label_x] = 1.0
     struct = ndimage.generate_binary_structure(2, 1)
@@ -207,7 +208,7 @@ def load_data(args):
 
     num_workers = 4 * torch.cuda.device_count()
     train_loader = DataLoader(
-        train_dataset, shuffle=False, batch_size=BATCH_SIZE, num_workers=num_workers
+        train_dataset, shuffle=True, batch_size=BATCH_SIZE, num_workers=num_workers
     )
     val_loader = DataLoader(
         val_dataset, shuffle=False, batch_size=1, num_workers=num_workers
@@ -216,6 +217,7 @@ def load_data(args):
     print("---------- Loading Dataset Done ----------")
 
     return train_loader, val_loader
+
 
 # def create_dataset(args):
 #     """

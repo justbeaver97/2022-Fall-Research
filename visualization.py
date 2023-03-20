@@ -59,13 +59,17 @@ def save_heatmap(preds, preds_binary, args, epoch):
 
 
 def prediction_plot(args, idx, highest_probability_pixels_list, i, original):
-    x, y = int(highest_probability_pixels_list[idx][0][i][0]), int(highest_probability_pixels_list[idx][0][i][1])
+    # print(highest_probability_pixels_list)
+    # print(np.array(highest_probability_pixels_list).shape)
+    # x, y = int(highest_probability_pixels_list[idx][0][i][0]), int(highest_probability_pixels_list[idx][0][i][1])
+    x, y = int(highest_probability_pixels_list[idx][i][0][1]), int(highest_probability_pixels_list[idx][i][0][0])
     pixel_overlaid_image = Image.fromarray(cv2.circle(np.array(original), (x,y), 15, (255, 0, 0),-1))
     pixel_overlaid_image.save(f'./plot_results/{args.wandb_name}/overlaid/label{i}/val{idx}_pixel_overlaid.png')
 
 
 def ground_truth_prediction_plot(highest_probability_pixels_list, label_list_total):
     print("ground")
+    printsave(highest_probability_pixels_list, label_list_total)
     # x, y = int(highest_probability_pixels_list[idx][0][i][0]), int(highest_probability_pixels_list[idx][0][i][1])
     # pixel_overlaid_image = Image.fromarray(cv2.circle(np.array(original), (x,y), 15, (255, 0, 0),-1))
     # pixel_overlaid_image.save(f'./plot_results/{args.wandb_name}/overlaid/label{i}/val{idx}_pixel_overlaid.png')
@@ -86,7 +90,7 @@ def save_overlaid_image(args, idx, predicted_label, data_path, highest_probabili
 
         if i != 6:
             prediction_plot(args, idx, highest_probability_pixels_list, i, original)
-            # ground_truth_prediction_plot()
+            ground_truth_prediction_plot(highest_probability_pixels_list, label_list_total)
 
 
 def save_predictions_as_images(args, loader, model, epoch, highest_probability_pixels_list, label_list_total, device="cuda"):

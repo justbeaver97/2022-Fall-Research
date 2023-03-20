@@ -14,7 +14,7 @@ from spatial_mean import SpatialMean_CHAN
 
 
 def calculate_mse_predicted_to_annotation(highest_probability_pixels, label_list, idx, mse_list):
-    highest_probability_pixels = highest_probability_pixels.squeeze(0).reshape(12,1).detach().cpu()
+    highest_probability_pixels = torch.Tensor(highest_probability_pixels).squeeze(0).reshape(12,1)
     label_list = np.array(torch.Tensor(label_list), dtype=object).reshape(12,1)
     label_list = np.ndarray.tolist(label_list)
     ordered_label_list = [
@@ -34,6 +34,19 @@ def calculate_mse_predicted_to_annotation(highest_probability_pixels, label_list
     return mse_value, mse_list
 
 
+def calculate_mse_predicted_to_annotation2(highest_probability_pixels, label_list, idx, mse_list):
+    highest_probability_pixels = torch.Tensor(np.array(highest_probability_pixels)).squeeze(0).reshape(12,1)
+    label_list = np.array(torch.Tensor(label_list), dtype=object).reshape(12,1)
+    label_list = np.ndarray.tolist(label_list)
+    mse_value = mse(highest_probability_pixels, label_list) 
+    for i in range(6):
+        # mse_list[i].append(mse(highest_probability_pixels[2*i:2*(i+1)]  ,ordered_label_list[2*i:2*(i+1)]))
+        mse_list[i][idx] = mse(highest_probability_pixels[2*i:2*(i+1)]  ,label_list[2*i:2*(i+1)])
+
+    # return mse_value
+    return mse_value, mse_list
+
+
 def extract_highest_probability_pixel(args, prediction_tensor, label_list, epoch): 
     # if args.delete_method == 'letter': num_channels = 7
     # else:                              num_channels = 6
@@ -46,20 +59,21 @@ def extract_highest_probability_pixel(args, prediction_tensor, label_list, epoch
 
     # return index_list, mse_value
 
-    if epoch == 49:
-        for i in range(len(prediction_tensor[0])):
-            for j in range(len(prediction_tensor[0][i])):
-                for k in range(len(prediction_tensor[0][i][j])):
-                    if int(prediction_tensor[0][i][j][k]) == 1:
-                        print(i,j,k)
+    # if epoch == 49:
+    #     for i in range(len(prediction_tensor[0])):
+    #         for j in range(len(prediction_tensor[0][i])):
+    #             for k in range(len(prediction_tensor[0][i][j])):
+    #                 if int(prediction_tensor[0][i][j][k]) == 1:
+    #                     print(i,j,k)
 
     
     index_list = []
     for i in range(6):
         index = (prediction_tensor[0][i] == torch.max(prediction_tensor[0][i])).nonzero()
+        if len(index) > 1:
+            index = torch.Tensor([[sum(index)[0]/len(index), sum(index)[1]/len(index)]])
         index_list.append(index.detach().cpu().numpy())
-    print(index_list)
-    index_list = torch.Tensor(index_list)
+    # index_list = torch.Tensor(index_list)
 
     return index_list
 
@@ -72,9 +86,6 @@ def check_accuracy(loader, model, args, epoch, device):
     dice_score = 0
     highest_probability_pixels_list = []
     highest_probability_mse_total = 0
-
-    # if args.delete_method == 'letter': num_channels = 7
-    # else:                              num_channels = 6
     mse_list = [[0]*len(loader) for _ in range(6)]
 
     model.eval()
@@ -89,21 +100,13 @@ def check_accuracy(loader, model, args, epoch, device):
             if args.pretrained: preds = model(image)
             else:               preds = torch.sigmoid(model(image))
 
-            # ## extract the pixel with highest probability value
-            # highest_probability_pixels, highest_probability_mse = extract_highest_probability_pixel(args, preds, label_list)
-            if epoch == 49:
-                exit()
+            ## extract the pixel with highest probability value
+            index_list = extract_highest_probability_pixel(args, preds, label_list, epoch)
+            highest_probability_mse, mse_list       = calculate_mse_predicted_to_annotation2(
+                index_list, label_list, idx, mse_list
+            )
 
-            if epoch % 10 == 5 or epoch == 49:
-                index_list = extract_highest_probability_pixel(args, preds, label_list, epoch)
-                print("index: ",index_list)
-                print("label: ",label_list)
-                a, b = calculate_mse_predicted_to_annotation(
-                    index_list, label_list, idx, mse_list
-                )
-                print("highest_probability_mse: ", a)
-                print("mse_list: ",b)
-
+            """
             ## extract pixel using spatial mean & calculating distance
             predict_spatial_mean_function = SpatialMean_CHAN(list(preds.shape[1:]))
             highest_probability_pixels    = predict_spatial_mean_function(preds)
@@ -114,6 +117,9 @@ def check_accuracy(loader, model, args, epoch, device):
             highest_probability_mse, mse_list       = calculate_mse_predicted_to_annotation(
                 highest_probability_pixels, label_list, idx, mse_list
             )
+            """
+            
+            highest_probability_pixels_list.append(index_list)
             highest_probability_mse_total += highest_probability_mse
 
             ## make predictions to be 0. or 1.
