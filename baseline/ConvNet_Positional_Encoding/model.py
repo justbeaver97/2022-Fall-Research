@@ -23,7 +23,7 @@ class DoubleConv(nn.Module):
     
 
 class CNN(nn.Module):
-    def __init__(self, in_channels=13, out_channels=12, features=[64, 128, 256, 512]):
+    def __init__(self, in_channels=4, out_channels=12, features=[64, 128, 256, 512]):
         super(CNN, self).__init__()
         self.layers = nn.ModuleList()
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2)

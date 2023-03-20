@@ -19,6 +19,8 @@ def get_emb(sin_inp):
     Gets a base embedding for one dimension with sin and cos intertwined
     """
     emb = torch.stack((sin_inp.sin(), sin_inp.cos()), dim=-1)
+    # print(sin_inp.sin().size(), sin_inp.sin())
+    # print(sin_inp.cos().size(), sin_inp.cos())
     return torch.flatten(emb, -2, -1)
 
 
@@ -62,6 +64,7 @@ class PositionalEncoding2D(nn.Module):
         :param tensor: A 4d tensor of size (batch_size, x, y, ch)
         :return: Positional Encoding Matrix of size (batch_size, x, y, ch)
         """
+        # print("===== Starting Positional Encoding =====")
         if len(tensor.shape) != 4:
             raise RuntimeError("The input tensor has to be 4d!")
 
@@ -70,21 +73,35 @@ class PositionalEncoding2D(nn.Module):
 
         self.cached_penc = None
         batch_size, x, y, orig_ch = tensor.shape
+        # print("Size of the input tensor: \n\t",batch_size, x, y, orig_ch)
+
         pos_x = torch.arange(x, device=tensor.device).type(self.inv_freq.type())
         pos_y = torch.arange(y, device=tensor.device).type(self.inv_freq.type())
+        # print("pos_x pos_y: \n\t", pos_x.size(), pos_y.size())
+
+        # print("self.inv_freq: \n\t",self.inv_freq.shape, self.inv_freq)
         sin_inp_x = torch.einsum("i,j->ij", pos_x, self.inv_freq)
         sin_inp_y = torch.einsum("i,j->ij", pos_y, self.inv_freq)
+        # print("sin_inp_x sin_inp_x: \n\t",sin_inp_x.size(), sin_inp_x.size())
+
         emb_x = get_emb(sin_inp_x).unsqueeze(1)
         emb_y = get_emb(sin_inp_y)
+        # print("emb_x emb_y: \n\t",emb_x.size(), emb_y.size())
+
+        # print(self.channels)
         emb = torch.zeros((x, y, self.channels * 2), device=tensor.device).type(
             tensor.type()
         )
+        # print("emb:\n\t",emb.size())
+
         emb[:, :, : self.channels] = emb_x
         emb[:, :, self.channels : 2 * self.channels] = emb_y
-
+        
         self.cached_penc = emb[None, :, :, :orig_ch].repeat(tensor.shape[0], 1, 1, 1)
+        # print(emb[None, :, :, :orig_ch].repeat(tensor.shape[0], 1, 1, 1))
+        # print(emb[None, :, :, :orig_ch].repeat(tensor.shape[0], 1, 1, 1).size())
         return self.cached_penc
-
+    
 
 class PositionalEncodingPermute2D(nn.Module):
     def __init__(self, channels):
@@ -102,39 +119,30 @@ class PositionalEncodingPermute2D(nn.Module):
     @property
     def org_channels(self):
         return self.penc.org_channels
-    
-
-def positional_encoding(args, data):    
-    ## data [batch_size, 1, 512, 512]
-    data_org = data[:]
-
-    ## positional encoding [batch_size, 10, 512, 512]
-    data_pe = data[:]
-    for i in range(9):
-        data_pe = torch.cat((data_pe,data_org),1)
-    pe2dSum = Summer(PositionalEncodingPermute2D(10))
-    data_pe = pe2dSum(data_pe)
-
-    ## (x,y) [batch_size, 2, 512, 512]
-    x = torch.Tensor([[i]*args.image_resize for i in range(args.image_resize)])
-    y = torch.Tensor([[j for j in range(args.image_resize)] for i in range(args.image_resize)])
-    x, y = x.unsqueeze(0).unsqueeze(0), y.unsqueeze(0).unsqueeze(0)
-    x_tmp, y_tmp = x[:], y[:]
-    for i in range(data.size()[0]-1):
-        x = torch.cat((x,x_tmp),0)
-        y = torch.cat((y,y_tmp),0)
-
-    ## regenerated data: [batch_size, 13, 512, 512]
-    regenerated_data = torch.cat((data_org,data_pe),1)
-    regenerated_data = torch.cat((regenerated_data,x),1)
-    regenerated_data = torch.cat((regenerated_data,y),1)
-
-    return regenerated_data
 
 
-pe2d = PositionalEncodingPermute2D(10)
+
 tmp = torch.zeros(12,1,512,512)
-print(pe2d(tmp).shape)
+
+# pe = PositionalEncoding2D(10)
+# print(pe)
+# print(pe(tmp).shape)
+
+# pe2d = PositionalEncodingPermute2D(10)
+# print("Size after positional encoding:\n\t",pe2d(tmp).shape)
+# print(int(np.ceil(3 / 4) * 2))
+
+# p_enc_3d = PositionalEncodingPermute2D(120)
+# p_enc_3d_sum = Summer(PositionalEncodingPermute2D(120))
+# z = torch.rand((11,1,32,32))
+# a = p_enc_3d(z)
+# print(a)
+# print(a.shape) # (1, 11, 5, 6, 4)
+# b = p_enc_3d_sum(z)
+# print(b)
+# print(b.shape)
+
+
 
 
 
@@ -157,3 +165,39 @@ print(pe2d(tmp).shape)
 # penc_no_sum = pe2d(a) # penc_no_sum.shape == (1, 6, 10)
 # penc_sum = pe2dSum(a)
 # # print(penc_no_sum + a == penc_sum) # True
+
+
+
+
+
+    
+
+def positional_encoding(args, data):    
+    ## data [batch_size, 1, 512, 512]
+    data_org = data[:]
+
+    ## positional encoding [batch_size, 10, 512, 512]
+    # data_pe = data[:]
+    # for i in range(9):
+    #     data_pe = torch.cat((data_pe,data_org),1)
+    pe2dSum = Summer(PositionalEncodingPermute2D(10))
+    data_pe = pe2dSum(data_org)
+
+    ## (x,y) [batch_size, 2, 512, 512]
+    x = torch.Tensor([[i]*args.image_resize for i in range(args.image_resize)])
+    y = torch.Tensor([[j for j in range(args.image_resize)] for i in range(args.image_resize)])
+    x, y = x.unsqueeze(0).unsqueeze(0), y.unsqueeze(0).unsqueeze(0)
+    x_tmp, y_tmp = x[:], y[:]
+    for i in range(data.size()[0]-1):
+        x = torch.cat((x,x_tmp),0)
+        y = torch.cat((y,y_tmp),0)
+
+    ## regenerated data: [batch_size, 13, 512, 512]
+    regenerated_data = torch.cat((data_org,data_pe),1)
+    regenerated_data = torch.cat((regenerated_data,x),1)
+    regenerated_data = torch.cat((regenerated_data,y),1)
+
+    return regenerated_data
+
+
+
