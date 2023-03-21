@@ -47,7 +47,7 @@ def calculate_mse_predicted_to_annotation2(highest_probability_pixels, label_lis
     return mse_value, mse_list
 
 
-def extract_highest_probability_pixel(args, prediction_tensor, label_list, epoch): 
+def extract_highest_probability_pixel(prediction_tensor): 
     # if args.delete_method == 'letter': num_channels = 7
     # else:                              num_channels = 6
     # index_list = []
@@ -65,7 +65,6 @@ def extract_highest_probability_pixel(args, prediction_tensor, label_list, epoch
     #             for k in range(len(prediction_tensor[0][i][j])):
     #                 if int(prediction_tensor[0][i][j][k]) == 1:
     #                     print(i,j,k)
-
     
     index_list = []
     for i in range(6):
@@ -73,95 +72,8 @@ def extract_highest_probability_pixel(args, prediction_tensor, label_list, epoch
         if len(index) > 1:
             index = torch.Tensor([[sum(index)[0]/len(index), sum(index)[1]/len(index)]])
         index_list.append(index.detach().cpu().numpy())
-    # index_list = torch.Tensor(index_list)
 
     return index_list
-
-def check_accuracy(loader, model, args, epoch, device):
-    print("=====Starting Validation=====")
-
-    num_correct, num_pixels = 0, 0
-    num_labels, num_labels_correct = 0, 0
-    predict_as_label, prediction_correct  = 0, 0
-    dice_score = 0
-    highest_probability_pixels_list = []
-    highest_probability_mse_total = 0
-    mse_list = [[0]*len(loader) for _ in range(6)]
-
-    model.eval()
-
-    with torch.no_grad():
-        label_list_total = []
-        for idx, (image, label, _, label_list) in enumerate(tqdm(loader)):
-            image = image.to(device)
-            label = label.to(device)
-            label_list_total.append(label.detach().cpu().numpy())
-            
-            if args.pretrained: preds = model(image)
-            else:               preds = torch.sigmoid(model(image))
-
-            ## extract the pixel with highest probability value
-            index_list = extract_highest_probability_pixel(args, preds, label_list, epoch)
-            highest_probability_mse, mse_list       = calculate_mse_predicted_to_annotation2(
-                index_list, label_list, idx, mse_list
-            )
-
-            """
-            ## extract pixel using spatial mean & calculating distance
-            predict_spatial_mean_function = SpatialMean_CHAN(list(preds.shape[1:]))
-            highest_probability_pixels    = predict_spatial_mean_function(preds)
-            highest_probability_pixels_list.append(highest_probability_pixels.detach().cpu().numpy())
-            # highest_probability_mse       = calculate_mse_predicted_to_annotation(
-            #     highest_probability_pixels, label_list, _
-            # )
-            highest_probability_mse, mse_list       = calculate_mse_predicted_to_annotation(
-                highest_probability_pixels, label_list, idx, mse_list
-            )
-            """
-            
-            highest_probability_pixels_list.append(index_list)
-            highest_probability_mse_total += highest_probability_mse
-
-            ## make predictions to be 0. or 1.
-            preds = (preds > 0.5).float()
-
-            ## compare only labels
-            if (epoch % 10 == 0 or epoch % 50 == 49) and args.wandb:
-                for i in range(len(preds[0][0])):
-                    for j in range(len(preds[0][0][i])):
-                        if float(label[0][0][i][j]) == 1.0:
-                            num_labels += 1
-                            if float(preds[0][0][i][j]) == 1.0:
-                                num_labels_correct += 1
-
-                        if float(preds[0][0][i][j]) == 1.0:
-                            predict_as_label += 1
-                            if float(label[0][0][i][j]) == 1.0:
-                                prediction_correct += 1
-
-            # compare whole picture
-            num_correct += (preds == label).sum()
-            num_pixels += torch.numel(preds)
-            dice_score += (2 * (preds * label).sum()) / ((preds + label).sum() + 1e-8)
-
-    label_accuracy, label_accuracy2 = 0, 0
-    whole_image_accuracy = num_correct/num_pixels*100
-    dice = dice_score/len(loader)
-
-    if epoch % 10 == 0 or epoch % 50 == 49:
-        label_accuracy = (num_labels_correct/(num_labels+(1e-8))) * 100        ## from GT, how many of them were predicted
-        label_accuracy2 = (prediction_correct/(predict_as_label+(1e-8))) * 100 ## from prediction, how many of them were GT
-        print(f"Number of pixels predicted as label: {predict_as_label}")
-        print(f"From Prediction: Got {prediction_correct}/{predict_as_label} with acc {label_accuracy2:.2f}")
-        print(f"From Ground Truth: Got {num_labels_correct}/{num_labels} with acc {label_accuracy:.2f}")
-        
-    print(f"Got {num_correct}/{num_pixels} with acc {whole_image_accuracy:.2f}")
-    print(f"Dice score: {dice}")
-    print(f"Pixel to Pixel Distance: {highest_probability_mse_total/len(loader)}")
-    model.train()
-
-    evaluation_list = [label_accuracy, label_accuracy2, whole_image_accuracy, predict_as_label, dice]
-    return model, evaluation_list, highest_probability_pixels_list, highest_probability_mse_total, mse_list, label_list_total
 
 
 def create_directories(args, folder='./plot_results'):

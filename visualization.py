@@ -31,6 +31,7 @@ import matplotlib.pyplot as plt
 import torchvision.transforms.functional as TF
 import numpy as np
 import cv2
+import seaborn as sns
 
 from tqdm import tqdm
 from PIL import Image
@@ -68,7 +69,6 @@ def prediction_plot(args, idx, highest_probability_pixels_list, i, original):
 
 
 def ground_truth_prediction_plot(highest_probability_pixels_list, label_list_total):
-    print("ground")
     printsave(highest_probability_pixels_list, label_list_total)
     # x, y = int(highest_probability_pixels_list[idx][0][i][0]), int(highest_probability_pixels_list[idx][0][i][1])
     # pixel_overlaid_image = Image.fromarray(cv2.circle(np.array(original), (x,y), 15, (255, 0, 0),-1))
@@ -124,5 +124,5 @@ def printsave(*a):
     print(*a,file=file)
 
 
-def box_plot():
-    pass
+def box_plot(mse_list):
+    print("box plot")
