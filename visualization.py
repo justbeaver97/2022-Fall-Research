@@ -23,6 +23,15 @@ Reference:
     >  - Expected Ptr<cv::UMat> for argument 'img':
         https://github.com/opencv/opencv/issues/18120
         cv2 functions expects numpy array
+    box plot:
+        https://buillee.tistory.com/198
+    box plot + scatter plot or jitter(swarm plot):
+        https://danbi-ncsoft.github.io/study/2018/07/23/study_eda2.html
+        https://gibles-deepmind.tistory.com/97
+        https://blog.naver.com/youji4ever/221813848875
+        https://buillee.tistory.com/198
+    save seaborn figure:
+        https://www.delftstack.com/ko/howto/seaborn/seaborn-save-figure/
 """
 
 import torch
@@ -37,13 +46,21 @@ from tqdm import tqdm
 from PIL import Image
 
 
-def save_label_image(label_tensor, args):
+def save_label_image(args, label_tensor, data_path, label_list):
     if args.delete_method == 'letter': num_channels = 7
     else:                              num_channels = 6
 
+    original = Image.open(f'{args.padded_image}/{data_path}').resize((args.image_resize,args.image_resize)).convert("RGB")
     for i in range(num_channels):
         plt.imshow(label_tensor[0][i].detach().cpu().numpy(), cmap='hot', interpolation='nearest')
         plt.savefig(f'./plot_results/{args.wandb_name}/annotation/label{i}.png')
+
+        print(label_list)
+        print(label_list.size())
+        exit()
+        # x, y = int(label_list[0][i][0][1]), int(label_list[0][i][0][0])
+        # pixel_overlaid_image = Image.fromarray(cv2.circle(np.array(original), (x,y), 15, (255, 0, 0),-1))
+        # pixel_overlaid_image.save(f'./plot_results/{args.wandb_name}/annotation/pixel_label{i}.png')
 
 
 def save_heatmap(preds, preds_binary, args, epoch):
@@ -68,11 +85,12 @@ def prediction_plot(args, idx, highest_probability_pixels_list, i, original):
     pixel_overlaid_image.save(f'./plot_results/{args.wandb_name}/overlaid/label{i}/val{idx}_pixel_overlaid.png')
 
 
-def ground_truth_prediction_plot(highest_probability_pixels_list, label_list_total):
-    printsave(highest_probability_pixels_list, label_list_total)
-    # x, y = int(highest_probability_pixels_list[idx][0][i][0]), int(highest_probability_pixels_list[idx][0][i][1])
-    # pixel_overlaid_image = Image.fromarray(cv2.circle(np.array(original), (x,y), 15, (255, 0, 0),-1))
-    # pixel_overlaid_image.save(f'./plot_results/{args.wandb_name}/overlaid/label{i}/val{idx}_pixel_overlaid.png')
+def ground_truth_prediction_plot(args, idx, original, epoch, highest_probability_pixels_list, label_list_total, i):
+    # printsave(highest_probability_pixels_list, label_list_total)
+
+    x, y = int(highest_probability_pixels_list[idx][0][i][0]), int(highest_probability_pixels_list[idx][0][i][1])
+    pixel_overlaid_image = Image.fromarray(cv2.circle(np.array(original), (x,y), 15, (255, 0, 0),-1))
+    pixel_overlaid_image.save(f'./plot_results/{args.wandb_name}/overlaid/label{i}/val{idx}_pixel_overlaid.png')
     
 
 def save_overlaid_image(args, idx, predicted_label, data_path, highest_probability_pixels_list, label_list_total, epoch):
@@ -81,7 +99,7 @@ def save_overlaid_image(args, idx, predicted_label, data_path, highest_probabili
     else:                              num_channels = 6
 
     for i in range(num_channels):
-        original = Image.open(image_path).resize((512,512)).convert("RGB")
+        original = Image.open(image_path).resize((args.image_resize,args.image_resize)).convert("RGB")
         background = predicted_label[0][i].unsqueeze(0)
         background = TF.to_pil_image(torch.cat((background, background, background), dim=0))
         overlaid_image = Image.blend(original, background , 0.3)
@@ -90,13 +108,13 @@ def save_overlaid_image(args, idx, predicted_label, data_path, highest_probabili
 
         if i != 6:
             prediction_plot(args, idx, highest_probability_pixels_list, i, original)
-            ground_truth_prediction_plot(highest_probability_pixels_list, label_list_total)
+            ground_truth_prediction_plot(args, idx, original, epoch, highest_probability_pixels_list, label_list_total, i)
 
 
 def save_predictions_as_images(args, loader, model, epoch, highest_probability_pixels_list, label_list_total, device="cuda"):
     model.eval()
 
-    for idx, (image, label, data_path, _) in enumerate(tqdm(loader)):
+    for idx, (image, label, data_path, label_list) in enumerate(tqdm(loader)):
         image = image.to(device=device)
         label = label.to(device=device)
         data_path = data_path[0]
@@ -109,8 +127,8 @@ def save_predictions_as_images(args, loader, model, epoch, highest_probability_p
             # printsave(preds_binary[0][0][0])
 
         ## todo: record heatmaps even if the loss hasn't decreased
-        if epoch == 0: 
-            save_label_image(label, args)
+        if epoch == 0 and idx == 0: 
+            save_label_image(args, label, data_path, label_list)
         if idx == 0:
             save_heatmap(preds, preds_binary, args, epoch)
         if epoch % 10 == 0 or epoch % args.dilation_epoch == (args.dilation_epoch-1):
@@ -125,4 +143,12 @@ def printsave(*a):
 
 
 def box_plot(mse_list):
-    print("box plot")
+    print(mse_list)
+    print(np.array(mse_list).shape)
+
+    # sns.boxplot(x=range(5), y=mse_list)
+    # sns.boxplot(y=mse_list[1])
+    # plt.savefig('tmp.png', dpi = 300)
+
+    # sns.boxplot(data = mse_list)
+    # plt.show()

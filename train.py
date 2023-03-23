@@ -192,6 +192,7 @@ def train(args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, optimizer, train
         ## On the last epoch, save the model & create a box plot
         if epoch == args.epochs - 1:
             torch.save(checkpoint, f"./results/{args.wandb_name}.pth")
+        if epoch % args.dilation_epoch == (args.dilation_epoch-1):
             box_plot(mse_list)
 
         if args.wandb:
