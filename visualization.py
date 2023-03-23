@@ -58,10 +58,7 @@ def save_label_image(args, label_tensor, data_path, label_list):
         x, y = int(label_list[2*i+1]), int(label_list[2*i])
         pixel_overlaid_image = Image.fromarray(cv2.circle(np.array(original), (x,y), 15, (255, 0, 0),-1))
         pixel_overlaid_image.save(f'./plot_results/{args.wandb_name}/annotation/pixel_label{i}.png')
-        # x, y = int(label_list[0][i][0][1]), int(label_list[0][i][0][0])
-        # pixel_overlaid_image = Image.fromarray(cv2.circle(np.array(original), (x,y), 15, (255, 0, 0),-1))
-        # pixel_overlaid_image.save(f'./plot_results/{args.wandb_name}/annotation/pixel_label{i}.png')
-    exit()
+
 
 def save_heatmap(preds, preds_binary, args, epoch):
     if args.only_pixel and (epoch % 10 == 0 or epoch % 50 == 49):
@@ -77,23 +74,22 @@ def save_heatmap(preds, preds_binary, args, epoch):
 
 
 def prediction_plot(args, idx, highest_probability_pixels_list, i, original):
-    # print(highest_probability_pixels_list)
-    # print(np.array(highest_probability_pixels_list).shape)
-    # x, y = int(highest_probability_pixels_list[idx][0][i][0]), int(highest_probability_pixels_list[idx][0][i][1])
     x, y = int(highest_probability_pixels_list[idx][i][0][1]), int(highest_probability_pixels_list[idx][i][0][0])
     pixel_overlaid_image = Image.fromarray(cv2.circle(np.array(original), (x,y), 15, (255, 0, 0),-1))
     pixel_overlaid_image.save(f'./plot_results/{args.wandb_name}/overlaid/label{i}/val{idx}_pixel_overlaid.png')
 
 
-def ground_truth_prediction_plot(args, idx, original, epoch, highest_probability_pixels_list, label_list_total, i):
-    # printsave(highest_probability_pixels_list, label_list_total)
-
-    x, y = int(highest_probability_pixels_list[idx][0][i][0]), int(highest_probability_pixels_list[idx][0][i][1])
+def ground_truth_prediction_plot(args, idx, original, epoch, highest_probability_pixels_list, label_list, i):
+    x, y = int(highest_probability_pixels_list[idx][i][0][1]), int(highest_probability_pixels_list[idx][i][0][0])
     pixel_overlaid_image = Image.fromarray(cv2.circle(np.array(original), (x,y), 15, (255, 0, 0),-1))
-    pixel_overlaid_image.save(f'./plot_results/{args.wandb_name}/overlaid/label{i}/val{idx}_pixel_overlaid.png')
+
+    x, y = int(label_list[2*i+1]), int(label_list[2*i])
+    pixel_overlaid_image = Image.fromarray(cv2.circle(np.array(pixel_overlaid_image), (x,y), 15, (0, 0, 255),-1))
+
+    pixel_overlaid_image.save(f'./plot_results/{args.wandb_name}/overlaid/label{i}/epoch{epoch}_val{idx}_pred_gt.png')
     
 
-def save_overlaid_image(args, idx, predicted_label, data_path, highest_probability_pixels_list, label_list_total, epoch):
+def save_overlaid_image(args, idx, predicted_label, data_path, highest_probability_pixels_list, label_list, epoch):
     image_path = f'{args.padded_image}/{data_path}'
     if args.delete_method == 'letter': num_channels = 7
     else:                              num_channels = 6
@@ -108,7 +104,9 @@ def save_overlaid_image(args, idx, predicted_label, data_path, highest_probabili
 
         if i != 6:
             prediction_plot(args, idx, highest_probability_pixels_list, i, original)
-            ground_truth_prediction_plot(args, idx, original, epoch, highest_probability_pixels_list, label_list_total, i)
+
+            if (epoch == 0 or epoch % args.dilation_epoch == (args.dilation_epoch-1)) and idx == 0:
+                ground_truth_prediction_plot(args, idx, original, epoch, highest_probability_pixels_list, label_list, i)
 
 
 def save_predictions_as_images(args, loader, model, epoch, highest_probability_pixels_list, label_list_total, device="cuda"):
@@ -132,13 +130,12 @@ def save_predictions_as_images(args, loader, model, epoch, highest_probability_p
         if idx == 0:
             save_heatmap(preds, preds_binary, args, epoch)
         if epoch % 10 == 0 or epoch % args.dilation_epoch == (args.dilation_epoch-1):
-            save_overlaid_image(args, idx, preds_binary, data_path, highest_probability_pixels_list, label_list_total, epoch)
+            save_overlaid_image(args, idx, preds_binary, data_path, highest_probability_pixels_list, label_list, epoch)
             
     model.train()
 
 
 def printsave(name, *a):
-    # file = open('tmp/error_log.txt','a')
     file = open(f'tmp/{name}.txt','a')
     print(*a,file=file)
 
@@ -146,7 +143,7 @@ def printsave(name, *a):
 def box_plot(args, mse_list):
     ## I can't make box plot of 3 different methods 
     ## I have to just save it as a file, and then create it from saved text files
-    printsave(f'{args.wandb_name}_MSE_LIST',mse_list)
+    printsave(f'{args.wandb_name}_MSE_LIST', mse_list)
 
     # print(mse_list)
     # print(np.array(mse_list).shape)
