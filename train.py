@@ -5,7 +5,6 @@ reference:
 
 import torch
 import torch.nn as nn
-import torchvision
 import numpy as np
 
 from tqdm import tqdm
@@ -193,7 +192,7 @@ def train(args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, optimizer, train
         if epoch == args.epochs - 1:
             torch.save(checkpoint, f"./results/{args.wandb_name}.pth")
         if epoch % args.dilation_epoch == (args.dilation_epoch-1):
-            box_plot(mse_list)
+            box_plot(args, mse_list)
 
         if args.wandb:
             if epoch % 10 == 0 or epoch % 50 == 49: 

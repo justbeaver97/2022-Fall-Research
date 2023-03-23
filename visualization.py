@@ -55,13 +55,13 @@ def save_label_image(args, label_tensor, data_path, label_list):
         plt.imshow(label_tensor[0][i].detach().cpu().numpy(), cmap='hot', interpolation='nearest')
         plt.savefig(f'./plot_results/{args.wandb_name}/annotation/label{i}.png')
 
-        print(label_list)
-        print(label_list.size())
-        exit()
+        x, y = int(label_list[2*i+1]), int(label_list[2*i])
+        pixel_overlaid_image = Image.fromarray(cv2.circle(np.array(original), (x,y), 15, (255, 0, 0),-1))
+        pixel_overlaid_image.save(f'./plot_results/{args.wandb_name}/annotation/pixel_label{i}.png')
         # x, y = int(label_list[0][i][0][1]), int(label_list[0][i][0][0])
         # pixel_overlaid_image = Image.fromarray(cv2.circle(np.array(original), (x,y), 15, (255, 0, 0),-1))
         # pixel_overlaid_image.save(f'./plot_results/{args.wandb_name}/annotation/pixel_label{i}.png')
-
+    exit()
 
 def save_heatmap(preds, preds_binary, args, epoch):
     if args.only_pixel and (epoch % 10 == 0 or epoch % 50 == 49):
@@ -137,14 +137,19 @@ def save_predictions_as_images(args, loader, model, epoch, highest_probability_p
     model.train()
 
 
-def printsave(*a):
-    file = open('tmp/error_log.txt','a')
+def printsave(name, *a):
+    # file = open('tmp/error_log.txt','a')
+    file = open(f'tmp/{name}.txt','a')
     print(*a,file=file)
 
 
-def box_plot(mse_list):
-    print(mse_list)
-    print(np.array(mse_list).shape)
+def box_plot(args, mse_list):
+    ## I can't make box plot of 3 different methods 
+    ## I have to just save it as a file, and then create it from saved text files
+    printsave(f'{args.wandb_name}_MSE_LIST',mse_list)
+
+    # print(mse_list)
+    # print(np.array(mse_list).shape)
 
     # sns.boxplot(x=range(5), y=mse_list)
     # sns.boxplot(y=mse_list[1])
