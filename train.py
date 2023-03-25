@@ -10,7 +10,7 @@ import numpy as np
 from tqdm import tqdm
 from spatial_mean import SpatialMean_CHAN
 from log import log_results, log_results_no_label
-from utility import create_directories, calculate_number_of_dilated_pixel, extract_highest_probability_pixel, calculate_mse_predicted_to_annotation2
+from utility import create_directories, calculate_number_of_dilated_pixel, extract_highest_probability_pixel, calculate_mse_predicted_to_annotation
 from visualization import save_predictions_as_images, box_plot
 from dataset import load_data
 
@@ -74,7 +74,7 @@ def validate_function(loader, model, args, epoch, device):
 
             ## extract the pixel with highest probability value
             index_list = extract_highest_probability_pixel(preds)
-            highest_probability_mse, mse_list = calculate_mse_predicted_to_annotation2(
+            highest_probability_mse, mse_list = calculate_mse_predicted_to_annotation(
                 index_list, label_list, idx, mse_list
             )
 
@@ -83,9 +83,6 @@ def validate_function(loader, model, args, epoch, device):
             predict_spatial_mean_function = SpatialMean_CHAN(list(preds.shape[1:]))
             highest_probability_pixels    = predict_spatial_mean_function(preds)
             highest_probability_pixels_list.append(highest_probability_pixels.detach().cpu().numpy())
-            # highest_probability_mse       = calculate_mse_predicted_to_annotation(
-            #     highest_probability_pixels, label_list, _
-            # )
             highest_probability_mse, mse_list       = calculate_mse_predicted_to_annotation(
                 highest_probability_pixels, label_list, idx, mse_list
             )
@@ -191,17 +188,18 @@ def train(args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, optimizer, train
         ## On the last epoch, save the model & create a box plot
         if epoch == args.epochs - 1:
             torch.save(checkpoint, f"./results/{args.wandb_name}.pth")
-        if epoch % args.dilation_epoch == (args.dilation_epoch-1):
             box_plot(args, mse_list)
 
         if args.wandb:
             if epoch % 10 == 0 or epoch % 50 == 49: 
                 log_results(
-                    args, loss, loss_pixel, loss_geometry, evaluation_list, highest_probability_mse_total/18
+                    args, loss, loss_pixel, loss_geometry, evaluation_list, highest_probability_mse_total/18, mse_list
                 )
             else:               
-                log_results_no_label(args, loss, loss_pixel, loss_geometry, evaluation_list, highest_probability_mse_total/18)
+                log_results_no_label(
+                    args, loss, loss_pixel, loss_geometry, evaluation_list, highest_probability_mse_total/18, mse_list
+                )
 
-        # if count == args.patience:
-        #     print("Early Stopping")
-        #     break
+        if args.patience and count == args.patience_threshold:
+            print("Early Stopping")
+            break

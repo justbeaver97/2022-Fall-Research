@@ -16,12 +16,10 @@ import torch.nn as nn
 import torch.optim as optim
 
 import preprocess
-from argument import arg_as_list
 from dataset import load_data, create_dataset
 from model import get_model, get_pretrained_model
 from train import train
 from log import initiate_wandb
-from utility import calculate_number_of_dilated_pixel
 
 
 def main(args):
@@ -91,6 +89,7 @@ if __name__ == '__main__':
     parser.add_argument('--create_dataset', action='store_true', help='whether to create dataset or not')
     parser.add_argument('--only_pixel', action='store_true', help='whether to use only pixel loss')
     parser.add_argument('--only_geom', action='store_true', help='whether to use only geometry loss')
+    parser.add_argument('--patience', action='store_true', help='whether to stop when loss does not decrease')
     parser.add_argument('--progressive_erosion', action='store_true', help='whether to use progressive erosion')
     parser.add_argument('--progressive_weight', action='store_true', help='whether to use progressive weight')
     parser.add_argument('--pretrained', action='store_true', help='whether to pretrained model')
@@ -128,7 +127,7 @@ if __name__ == '__main__':
     parser.add_argument('--output_channel', type=int, default=1, help='output channel size for UNet')
     parser.add_argument('--lr', '--learning_rate', type=float, default=1e-5, help='learning rate')
     parser.add_argument('--epochs', type=int, default=1000, help='number of epochs')
-    parser.add_argument('--patience', type=int, default=10, help='early stopping patience')
+    parser.add_argument('--patience_threshold', type=int, default=10, help='early stopping threshold')
     parser.add_argument('--loss_weight', type=int, default=1, help='weight of the loss function')
     # parser.add_argument('--loss_class_weight', type=float, default=1, help='weight for each class of the loss function')
     # parser.add_argument("--loss_class_weight_list", type=arg_as_list, default=[], help='progressive weight')

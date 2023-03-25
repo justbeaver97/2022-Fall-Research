@@ -8,35 +8,43 @@ def initiate_wandb(args):
             name=f"{args.wandb_name}"
         )
 
-# def log_results(
-#     args, train_loss, label_accuracy, segmentation_accuracy, predict_as_label
-#     ):
-#     wandb.log({
-#         'train loss': train_loss,
-#         'whole image accuracy': segmentation_accuracy,
-#         # 'label accuracy': label_accuracy,
-#         # 'predicted as label': predict_as_label,
-#     })
 
-def log_results_no_label(args, train_loss, loss_pixel, loss_geometry, evaluation_list, highest_probability_mse):
+def log_results_no_label(
+        args, train_loss, loss_pixel, loss_geometry, evaluation_list, highest_probability_mse, mse_list
+    ):
     wandb.log({
-        'train loss': train_loss,
-        'pixel loss': loss_pixel,
-        'geometry loss': loss_geometry,
-        'whole image accuracy': evaluation_list[2],
-        'dice score': evaluation_list[4],
-        'pred to gt distance': highest_probability_mse,
+        'Train Loss': train_loss,
+        'Pixel Loss': loss_pixel,
+        'Geometry Loss': loss_geometry,
+        'Whole Image Accuracy': evaluation_list[2],
+        'DICE Score': evaluation_list[4],
+        'Average RMSE': highest_probability_mse,
+        'Label0 RMSE': sum(mse_list[0]),
+        'Label1 RMSE': sum(mse_list[1]),
+        'Label2 RMSE': sum(mse_list[2]),
+        'Label3 RMSE': sum(mse_list[3]),
+        'Label4 RMSE': sum(mse_list[4]),
+        'Label5 RMSE': sum(mse_list[5]),
     })
+    
 
-def log_results(args, train_loss, loss_pixel, loss_geometry, evaluation_list, highest_probability_mse):
+def log_results(
+        args, train_loss, loss_pixel, loss_geometry, evaluation_list, highest_probability_mse, mse_list
+    ):
     wandb.log({
-        'train loss': train_loss,
-        'pixel loss': loss_pixel,
-        'geometry loss': loss_geometry,
-        'whole image accuracy': evaluation_list[2],
-        'label accuracy(1) - Preds/GT': evaluation_list[0],
-        'label accuracy(2) - GT/Preds': evaluation_list[1],
-        'predicted as label': evaluation_list[3],
-        'dice score': evaluation_list[4],
-        'pred to gt distance': highest_probability_mse,
+        'Train Loss': train_loss,
+        'Pixel Loss': loss_pixel,
+        'Geometry Loss': loss_geometry,
+        'Whole Image Accuracy': evaluation_list[2],
+        'Label Accuracy(1) - Preds/GT': evaluation_list[0],
+        'Label Accuracy(2) - GT/Preds': evaluation_list[1],
+        'Predicted as Label': evaluation_list[3],
+        'DICE Score': evaluation_list[4],
+        'Average RMSE': highest_probability_mse,
+        'Label0 RMSE': sum(mse_list[0]),
+        'Label1 RMSE': sum(mse_list[1]),
+        'Label2 RMSE': sum(mse_list[2]),
+        'Label3 RMSE': sum(mse_list[3]),
+        'Label4 RMSE': sum(mse_list[4]),
+        'Label5 RMSE': sum(mse_list[5]),
     })
