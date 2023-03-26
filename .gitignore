@@ -1,0 +1,13 @@
+data
+__pycache__
+*results
+wandb
+xlsx
+
+*.sh
+*.xlsx
+*.txt
+tmp*
+
+nohup*
+# *.png
