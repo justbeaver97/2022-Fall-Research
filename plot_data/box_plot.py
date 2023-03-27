@@ -24,7 +24,7 @@ import matplotlib.pyplot as plt
 def convert_txt_to_list(txt_file):
     rmse_list = [[0]*18 for _ in range(6)]
 
-    with open(f"{txt_file}", "r") as f:
+    with open(f"./txt_files/{txt_file}", "r") as f:
         for line in f:
             data1 = list(line.split(','))
     
@@ -72,7 +72,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--baseline1_txt', type=str, default="MSE_LIST_baseline_ConvNet_PE.txt")
     parser.add_argument('--baseline2_txt', type=str, default="MSE_LIST_baseline_ResNet.txt")
-    parser.add_argument('--best_txt', type=str, default="MIDL_D40-5_W_P_progressive_weighted_erosion_MSE_LIST.txt")
+    parser.add_argument('--best_txt', type=str, default="MIDL_D60-10_W_P_progressive_weighted_erosion_ver2_1e-4_50_MSE_LIST.txt")
 
     parser.add_argument('--experiment1', type=str, default="ConvNet + PE")
     parser.add_argument('--experiment2', type=str, default="Pretrained ResNet")
