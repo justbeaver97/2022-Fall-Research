@@ -7,7 +7,7 @@ from sklearn.metrics import mean_squared_error as mse
 
 
 def printsave(name, *a):
-    file = open(f'../../plot_data/{name}','a')
+    file = open(f'../../plot_data/box_plot/txt_files/{name}','a')
     print(*a,file=file)
 
 
@@ -71,12 +71,12 @@ def train(args, DEVICE, model, loss_fn, optimizer, train_loader, val_loader):
         wandb.log({
             'Train Loss': loss,
             'Average RMSE': highest_probability_mse_total/len(val_loader),
-            'Label0 RMSE': sum(mse_list[0])/18,
-            'Label1 RMSE': sum(mse_list[1])/18,
-            'Label2 RMSE': sum(mse_list[2])/18,
-            'Label3 RMSE': sum(mse_list[3])/18,
-            'Label4 RMSE': sum(mse_list[4])/18,
-            'Label5 RMSE': sum(mse_list[5])/18,
+            'Label0 RMSE': sum(mse_list[0])/len(val_loader),
+            'Label1 RMSE': sum(mse_list[1])/len(val_loader),
+            'Label2 RMSE': sum(mse_list[2])/len(val_loader),
+            'Label3 RMSE': sum(mse_list[3])/len(val_loader),
+            'Label4 RMSE': sum(mse_list[4])/len(val_loader),
+            'Label5 RMSE': sum(mse_list[5])/len(val_loader),
         })
 
         checkpoint = {

@@ -23,15 +23,6 @@ Reference:
     >  - Expected Ptr<cv::UMat> for argument 'img':
         https://github.com/opencv/opencv/issues/18120
         cv2 functions expects numpy array
-    box plot:
-        https://buillee.tistory.com/198
-    box plot + scatter plot or jitter(swarm plot):
-        https://danbi-ncsoft.github.io/study/2018/07/23/study_eda2.html
-        https://gibles-deepmind.tistory.com/97
-        https://blog.naver.com/youji4ever/221813848875
-        https://buillee.tistory.com/198
-    save seaborn figure:
-        https://www.delftstack.com/ko/howto/seaborn/seaborn-save-figure/
 """
 
 import torch
@@ -40,7 +31,6 @@ import matplotlib.pyplot as plt
 import torchvision.transforms.functional as TF
 import numpy as np
 import cv2
-import seaborn as sns
 
 from tqdm import tqdm
 from PIL import Image
@@ -121,10 +111,8 @@ def save_predictions_as_images(args, loader, model, epoch, highest_probability_p
             if args.pretrained: preds = model(image)
             else:               preds = torch.sigmoid(model(image))
             preds_binary = (preds > args.threshold).float()
-            # printsave(preds[0][0][0])
-            # printsave(preds_binary[0][0][0])
 
-        ## todo: record heatmaps even if the loss hasn't decreased
+        ## TODO: record heatmaps even if the loss hasn't decreased
         if epoch == 0 and idx == 0: 
             save_label_image(args, label, data_path, label_list)
         if idx == 0:
@@ -136,7 +124,7 @@ def save_predictions_as_images(args, loader, model, epoch, highest_probability_p
 
 
 def printsave(name, *a):
-    file = open(f'tmp/{name}.txt','a')
+    file = open(f'./plot_data/box_plot/txt_files/{name}.txt','a')
     print(*a,file=file)
 
 
@@ -144,13 +132,3 @@ def box_plot(args, mse_list):
     ## I can't make box plot of 3 different methods 
     ## I have to just save it as a file, and then create it from saved text files
     printsave(f'{args.wandb_name}_MSE_LIST', mse_list)
-
-    # print(mse_list)
-    # print(np.array(mse_list).shape)
-
-    # sns.boxplot(x=range(5), y=mse_list)
-    # sns.boxplot(y=mse_list[1])
-    # plt.savefig('tmp.png', dpi = 300)
-
-    # sns.boxplot(data = mse_list)
-    # plt.show()
