@@ -49,6 +49,7 @@ def convert_list_to_dataframe(total_list, total_name):
 def box_plot(df, name):
     sns.boxplot(x=df['label'], y=df['value'], hue=df['experiment'], data=df)
     # sns.scatterplot(x=df['label'], y=df['value'], hue=df['experiment'], data=df)
+    plt.xlabel('Label')
     plt.ylabel('RMSE (pixels)')
     plt.legend(loc='upper center')
     plt.savefig(f'{name}.png')
@@ -77,7 +78,7 @@ if __name__ == '__main__':
     parser.add_argument('--experiment1', type=str, default="ConvNet + PE")
     parser.add_argument('--experiment2', type=str, default="Pretrained ResNet")
     parser.add_argument('--experiment3', type=str, default="UNet + Progressive Erosion")
-    parser.add_argument('--plot_name', type=str, default="2023_MIDL")
+    parser.add_argument('--plot_name', type=str, default="2023_MIDL_Box_Plot")
     args = parser.parse_args()
 
     main(args)
