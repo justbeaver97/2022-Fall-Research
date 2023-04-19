@@ -111,7 +111,7 @@ if __name__ == '__main__':
     parser.add_argument('--dataset_path', type=str, default="./data/dataset", help='dataset path')
     parser.add_argument('--dataset_csv_path', type=str, default="./xlsx/dataset.csv", help='dataset excel file path')
     parser.add_argument('--annotation_text_path', type=str, default="./data/annotation_text_files", help='annotation text file path')
-    parser.add_argument('--annotation_text_name', type=str, default="annotation.txt", help='annotation text file name')
+    parser.add_argument('--annotation_text_name', type=str, default="annotation_label8.txt", help='annotation text file name')
     parser.add_argument('--dataset_split', type=int, default=9, help='dataset split ratio')
     parser.add_argument('--dilate', type=int, default=2, help='dilate iteration')
     parser.add_argument('--dilation_decrease', type=int, default=5, help='dilation decrease in progressive erosion')

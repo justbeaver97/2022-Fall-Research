@@ -38,7 +38,7 @@ from PIL import Image
 
 def save_label_image(args, label_tensor, data_path, label_list):
     if args.delete_method == 'letter': num_channels = 7
-    else:                              num_channels = 6
+    else:                              num_channels = 8
 
     original = Image.open(f'{args.padded_image}/{data_path}').resize((args.image_resize,args.image_resize)).convert("RGB")
     for i in range(num_channels):
@@ -82,7 +82,7 @@ def ground_truth_prediction_plot(args, idx, original, epoch, highest_probability
 def save_overlaid_image(args, idx, predicted_label, data_path, highest_probability_pixels_list, label_list, epoch):
     image_path = f'{args.padded_image}/{data_path}'
     if args.delete_method == 'letter': num_channels = 7
-    else:                              num_channels = 6
+    else:                              num_channels = 8
 
     for i in range(num_channels):
         original = Image.open(image_path).resize((args.image_resize,args.image_resize)).convert("RGB")
@@ -92,7 +92,7 @@ def save_overlaid_image(args, idx, predicted_label, data_path, highest_probabili
         overlaid_image.save(f'./plot_results/{args.wandb_name}/overlaid/label{i}/val{idx}_overlaid.png')
         overlaid_image.save(f'./plot_results/{args.wandb_name}/label{i}/epoch_{epoch}_overlaid.png')
 
-        if i != 6:
+        if i != 8:
             prediction_plot(args, idx, highest_probability_pixels_list, i, original)
 
             if (epoch == 0 or epoch % args.dilation_epoch == (args.dilation_epoch-1)) and idx == 0:

@@ -27,7 +27,7 @@ class DoubleConv(nn.Module):
 
 class UNET(nn.Module):
     def __init__(
-            self, in_channels=3, out_channels=6, features=[64, 128, 256, 512],
+            self, in_channels=3, out_channels=8, features=[64, 128, 256, 512],
     ):
         super(UNET, self).__init__()
         self.ups = nn.ModuleList()
@@ -80,7 +80,7 @@ class UNET(nn.Module):
 def get_model(args, DEVICE):
     print("---------- Loading Model Not Pretrained ----------")
     if args.delete_method == "letter":  num_out_channels = 7
-    else:                               num_out_channels = 6
+    else:                               num_out_channels = 8
     return UNET(in_channels=3, out_channels=num_out_channels).to(DEVICE)
 
 
@@ -90,10 +90,13 @@ def get_pretrained_model(args, DEVICE):
     ENCODER = 'resnet101'
     ENCODER_WEIGHTS = 'imagenet'
     
-    if args.delete_method == "letter":
-        CLASSES = ['top','upper middle left','upper middle center','lower middle left', 'lower middle center', 'bottom', 'letter']
-    else:
-        CLASSES = ['top','upper middle left','upper middle center','lower middle left', 'lower middle center', 'bottom']
+    # if args.delete_method == "letter":
+    #     CLASSES = ['top','upper middle left','upper middle center','lower middle left', 'lower middle center', 'bottom', 'letter']
+    # else:
+    CLASSES = [
+        'top','upper middle left', 'upper middle right', 'upper middle center',
+        'lower middle left', 'lower middle center', 'lower middle right', 'bottom'
+    ]
     
     ACTIVATION = 'sigmoid' # could be None for logits or 'softmax2d' for multiclass segmentation
 

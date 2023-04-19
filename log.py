@@ -25,6 +25,8 @@ def log_results_no_label(
         'Label3 RMSE': sum(mse_list[3])/val_loader_len,
         'Label4 RMSE': sum(mse_list[4])/val_loader_len,
         'Label5 RMSE': sum(mse_list[5])/val_loader_len,
+        'Label6 RMSE': sum(mse_list[6])/val_loader_len,
+        'Label7 RMSE': sum(mse_list[7])/val_loader_len,
     })
     
 
@@ -47,4 +49,6 @@ def log_results(
         'Label3 RMSE': sum(mse_list[3])/val_loader_len,
         'Label4 RMSE': sum(mse_list[4])/val_loader_len,
         'Label5 RMSE': sum(mse_list[5])/val_loader_len,
+        'Label6 RMSE': sum(mse_list[6])/val_loader_len,
+        'Label7 RMSE': sum(mse_list[7])/val_loader_len,
     })

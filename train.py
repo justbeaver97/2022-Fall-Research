@@ -60,7 +60,7 @@ def validate_function(loader, model, args, epoch, device):
     dice_score = 0
     highest_probability_pixels_list = []
     highest_probability_mse_total = 0
-    mse_list = [[0]*len(loader) for _ in range(6)]
+    mse_list = [[0]*len(loader) for _ in range(8)]
 
     with torch.no_grad():
         label_list_total = []
@@ -146,6 +146,8 @@ def train(args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, optimizer, train
                 train_loader, val_loader = load_data(args)
                 if epoch != 0:
                     args.dilate = args.dilate - args.dilation_decrease
+                if args.dilate < 1:
+                    args.dilate = 0
 
             if args.progressive_weight:
                 image_size = args.image_resize * args.image_resize
@@ -193,11 +195,11 @@ def train(args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, optimizer, train
         if args.wandb:
             if epoch % 10 == 0 or epoch % 50 == 49: 
                 log_results(
-                    args, loss, loss_pixel, loss_geometry, evaluation_list, highest_probability_mse_total/18, mse_list
+                    args, loss, loss_pixel, loss_geometry, evaluation_list, highest_probability_mse_total, mse_list, len(val_loader)
                 )
             else:               
                 log_results_no_label(
-                    args, loss, loss_pixel, loss_geometry, evaluation_list, highest_probability_mse_total/18, mse_list
+                    args, loss, loss_pixel, loss_geometry, evaluation_list, highest_probability_mse_total, mse_list, len(val_loader)
                 )
 
         if args.patience and count == args.patience_threshold:

@@ -18,7 +18,7 @@ def calculate_mse_predicted_to_annotation(highest_probability_pixels, label_list
 
     ## squared=False for RMSE values
     mse_value = mse(highest_probability_pixels, label_list, squared=False) 
-    for i in range(6):
+    for i in range(8):
         mse_list[i][idx] = mse(highest_probability_pixels[2*i:2*(i+1)]  ,label_list[2*i:2*(i+1)], squared=False)
 
     return mse_value, mse_list
@@ -26,7 +26,7 @@ def calculate_mse_predicted_to_annotation(highest_probability_pixels, label_list
 
 def extract_highest_probability_pixel(prediction_tensor): 
     index_list = []
-    for i in range(6):
+    for i in range(8):
         index = (prediction_tensor[0][i] == torch.max(prediction_tensor[0][i])).nonzero()
         if len(index) > 1:
             index = torch.Tensor([[sum(index)[0]/len(index), sum(index)[1]/len(index)]])
@@ -36,7 +36,7 @@ def extract_highest_probability_pixel(prediction_tensor):
 
 
 def create_directories(args, folder='./plot_results'):
-    if not args.delete_method: num_channels = 6
+    if not args.delete_method: num_channels = 8
     else:                      num_channels = 7
 
     if not os.path.exists('./results'):
