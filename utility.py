@@ -12,8 +12,8 @@ from sklearn.metrics import mean_squared_error as mse
 
 
 def calculate_mse_predicted_to_annotation(highest_probability_pixels, label_list, idx, mse_list):
-    highest_probability_pixels = torch.Tensor(np.array(highest_probability_pixels)).squeeze(0).reshape(12,1)
-    label_list = np.array(torch.Tensor(label_list), dtype=object).reshape(12,1)
+    highest_probability_pixels = torch.Tensor(np.array(highest_probability_pixels)).squeeze(0).reshape(16,1)
+    label_list = np.array(torch.Tensor(label_list), dtype=object).reshape(16,1)
     label_list = np.ndarray.tolist(label_list)
 
     ## squared=False for RMSE values

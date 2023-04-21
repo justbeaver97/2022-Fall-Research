@@ -59,8 +59,8 @@ def main(args):
         model = get_model(args, DEVICE)
 
     ## 2 gpu - batch size 24 / 1 gpu - batch size 12 
-    # model = nn.DataParallel(model)
-    model.cuda()
+    model = nn.DataParallel(model)
+    # model.cuda()
 
     ## set loss function & optimizer
     if args.progressive_weight:
