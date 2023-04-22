@@ -1,7 +1,9 @@
 """
 reference:
-    https://www.kaggle.com/code/balraj98/unet-with-pretrained-resnet50-encoder-pytorch
-
+    pretrained unet:
+        https://www.kaggle.com/code/balraj98/unet-with-pretrained-resnet50-encoder-pytorch
+    smp unet documentation:
+        https://smp.readthedocs.io/en/latest/models.html
 """
 
 import torch
@@ -27,7 +29,7 @@ class DoubleConv(nn.Module):
 
 class UNET(nn.Module):
     def __init__(
-            self, in_channels=3, out_channels=8, features=[64, 128, 256, 512],
+            self, in_channels=3, out_channels=6, features=[64, 128, 256, 512],
     ):
         super(UNET, self).__init__()
         self.ups = nn.ModuleList()
@@ -72,42 +74,27 @@ class UNET(nn.Module):
             concat_skip = torch.cat((skip_connection, x), dim=1)
             x = self.ups[idx+1](concat_skip)
 
-
         ## need to do a sigmoid after the UNet -> in train.py
         return self.final_conv(x)
 
 
 def get_model(args, DEVICE):
-    print("---------- Loading Model Not Pretrained ----------")
-    if args.delete_method == "letter":  num_out_channels = 7
-    else:                               num_out_channels = 8
-    return UNET(in_channels=3, out_channels=num_out_channels).to(DEVICE)
+    print("---------- Loading Not Pretrained Model ----------")
+    model = UNET(in_channels=3, out_channels=args.output_channel).to(DEVICE)
+    print("---------- Not Pretrained Model Loaded ----------")
+    return 
 
 
 def get_pretrained_model(args, DEVICE):
-    print("---------- Loading Model Pretrained ----------")
+    print("---------- Loading Pretrained Model ----------")
 
-    ENCODER = 'resnet101'
-    ENCODER_WEIGHTS = 'imagenet'
-    
-    # if args.delete_method == "letter":
-    #     CLASSES = ['top','upper middle left','upper middle center','lower middle left', 'lower middle center', 'bottom', 'letter']
-    # else:
-    CLASSES = [
-        'top','upper middle left', 'upper middle right', 'upper middle center',
-        'lower middle left', 'lower middle center', 'lower middle right', 'bottom'
-    ]
-    
-    ACTIVATION = 'sigmoid' # could be None for logits or 'softmax2d' for multiclass segmentation
-
-    # create segmentation model with pretrained encoder
     model = smp.Unet(
-        encoder_name=ENCODER, 
-        encoder_weights=ENCODER_WEIGHTS, 
-        classes=len(CLASSES), 
-        activation=ACTIVATION,
+        encoder_name    = 'resnet101', 
+        encoder_weights = 'imagenet', 
+        encoder_depth   = args.encoder_depth,
+        classes         = args.output_channel, 
+        activation      = 'sigmoid',
+        decoder_channels= args.decoder_channel,
     )
-
-    # preprocessing_fn = smp.encoders.get_preprocessing_fn(ENCODER, ENCODER_WEIGHTS)
-
+    print("---------- Pretrained Model Loaded ----------")
     return model.to(DEVICE)

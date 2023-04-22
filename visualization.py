@@ -37,11 +37,8 @@ from PIL import Image
 
 
 def save_label_image(args, label_tensor, data_path, label_list):
-    if args.delete_method == 'letter': num_channels = 7
-    else:                              num_channels = 8
-
     original = Image.open(f'{args.padded_image}/{data_path}').resize((args.image_resize,args.image_resize)).convert("RGB")
-    for i in range(num_channels):
+    for i in range(args.output_channel):
         plt.imshow(label_tensor[0][i].detach().cpu().numpy(), cmap='hot', interpolation='nearest')
         plt.savefig(f'./plot_results/{args.wandb_name}/annotation/label{i}.png')
 
@@ -51,12 +48,12 @@ def save_label_image(args, label_tensor, data_path, label_list):
 
 
 def save_heatmap(preds, preds_binary, args, epoch):
-    if args.only_pixel and (epoch % 10 == 0 or epoch % 50 == 49):
+    if args.pixel_loss and (epoch % 10 == 0 or epoch % args.dilation_epoch == (args.dilation_epoch-1)):
         for i in range(len(preds[0])):
             plt.imshow(preds[0][i].detach().cpu().numpy(), cmap='hot', interpolation='nearest')
             plt.savefig(f'./plot_results/{args.wandb_name}/label{i}/epoch_{epoch}_heatmap.png')
             torchvision.utils.save_image(preds_binary[0][i], f'./plot_results/{args.wandb_name}/label{i}/epoch_{epoch}.png')
-    elif not args.only_pixel:
+    elif not args.pixel_loss:
         for i in range(len(preds[0])):
             plt.imshow(preds[0][i].detach().cpu().numpy(), cmap='hot', interpolation='nearest')
             plt.savefig(f'./plot_results/{args.wandb_name}/label{i}/epoch_{epoch}_heatmap.png')
@@ -81,10 +78,8 @@ def ground_truth_prediction_plot(args, idx, original, epoch, highest_probability
 
 def save_overlaid_image(args, idx, predicted_label, data_path, highest_probability_pixels_list, label_list, epoch):
     image_path = f'{args.padded_image}/{data_path}'
-    if args.delete_method == 'letter': num_channels = 7
-    else:                              num_channels = 8
 
-    for i in range(num_channels):
+    for i in range(args.output_channel):
         original = Image.open(image_path).resize((args.image_resize,args.image_resize)).convert("RGB")
         background = predicted_label[0][i].unsqueeze(0)
         background = TF.to_pil_image(torch.cat((background, background, background), dim=0))
@@ -92,7 +87,7 @@ def save_overlaid_image(args, idx, predicted_label, data_path, highest_probabili
         overlaid_image.save(f'./plot_results/{args.wandb_name}/overlaid/label{i}/val{idx}_overlaid.png')
         overlaid_image.save(f'./plot_results/{args.wandb_name}/label{i}/epoch_{epoch}_overlaid.png')
 
-        if i != 8:
+        if i != args.output_channel:
             prediction_plot(args, idx, highest_probability_pixels_list, i, original)
 
             if (epoch == 0 or epoch % args.dilation_epoch == (args.dilation_epoch-1)) and idx == 0:
