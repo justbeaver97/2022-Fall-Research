@@ -16,6 +16,7 @@ import torch.nn as nn
 import torch.optim as optim
 
 import preprocess
+from argument import arg_as_list
 from dataset import load_data, create_dataset
 from model import get_model, get_pretrained_model
 from train import train
@@ -58,25 +59,26 @@ def main(args):
     else:
         model = get_model(args, DEVICE)
 
-    ## 2 gpu - batch size 24 / 1 gpu - batch size 12 
-    model = nn.DataParallel(model)
-    # model.cuda()
+    if args.multi_gpu:
+        model = nn.DataParallel(model)
+    else:
+        model.cuda()
 
     ## set loss function & optimizer
     if args.progressive_weight:
-        loss_fn_pixel = 0
+        loss_fn_pixel = None
     else:
-        # image_size = args.image_resize * args.image_resize
-        # num_of_dil_pixels = calculate_number_of_dilated_pixel(args.dilate)
-        # w0 = (image_size * 100)/(image_size - num_of_dil_pixels)
-        # w1 = (image_size * 100)/(num_of_dil_pixels)
         weight = 1
         loss_fn_pixel = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([weight], device=DEVICE))
     loss_fn_geometry = nn.MSELoss()
+    loss_fn_angle = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
     ## train model
-    train(args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, optimizer, train_loader, val_loader)
+    train(
+        args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, loss_fn_angle, 
+        optimizer, train_loader, val_loader
+    )
 
 
 
@@ -87,8 +89,10 @@ if __name__ == '__main__':
     parser.add_argument('--data_preprocessing', action='store_true', help='whether to do data preprocessing or not')
     parser.add_argument('--pad_image', action='store_true', help='whether to pad the original image')
     parser.add_argument('--create_dataset', action='store_true', help='whether to create dataset or not')
-    parser.add_argument('--only_pixel', action='store_true', help='whether to use only pixel loss')
-    parser.add_argument('--only_geom', action='store_true', help='whether to use only geometry loss')
+    parser.add_argument('--multi_gpu', action='store_true', help='whether to use multiple gpus or not')
+    parser.add_argument('--pixel_loss', action='store_true', help='whether to use only pixel loss')
+    parser.add_argument('--geom_loss', action='store_true', help='whether to use only geometry loss')
+    parser.add_argument('--angle_loss', action='store_true', help='whether to use only angular loss')
     parser.add_argument('--patience', action='store_true', help='whether to stop when loss does not decrease')
     parser.add_argument('--progressive_erosion', action='store_true', help='whether to use progressive erosion')
     parser.add_argument('--progressive_weight', action='store_true', help='whether to use progressive weight')
@@ -124,13 +128,14 @@ if __name__ == '__main__':
     ## hyperparameters - model
     parser.add_argument('--seed', type=int, default=2022, help='seed customization for result reproduction')
     parser.add_argument('--input_channel', type=int, default=3, help='input channel size for UNet')
-    parser.add_argument('--output_channel', type=int, default=1, help='output channel size for UNet')
-    parser.add_argument('--lr', '--learning_rate', type=float, default=1e-5, help='learning rate')
+    parser.add_argument('--output_channel', type=int, default=6, help='output channel size for UNet')
+    parser.add_argument('--encoder_depth', type=int, default=5, help='model depth for UNet')
+    parser.add_argument("--decoder_channel", type=arg_as_list, default=[256,128,64,32,16], help='model decoder channels')
+    parser.add_argument('--lr', '--learning_rate', type=float, default=1e-4, help='learning rate')
     parser.add_argument('--epochs', type=int, default=1000, help='number of epochs')
     parser.add_argument('--patience_threshold', type=int, default=10, help='early stopping threshold')
-    parser.add_argument('--loss_weight', type=int, default=1, help='weight of the loss function')
-    # parser.add_argument('--loss_class_weight', type=float, default=1, help='weight for each class of the loss function')
-    # parser.add_argument("--loss_class_weight_list", type=arg_as_list, default=[], help='progressive weight')
+    parser.add_argument('--geom_loss_weight', type=int, default=1, help='weight of the loss function')
+    parser.add_argument('--angle_loss_weight', type=int, default=1, help='weight of the loss function')
 
     ## hyperparameters - results
     parser.add_argument('--threshold', type=float, default=0.5, help='threshold for binary prediction')

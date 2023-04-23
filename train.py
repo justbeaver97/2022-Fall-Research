@@ -8,17 +8,20 @@ import torch.nn as nn
 import numpy as np
 
 from tqdm import tqdm
+
 from spatial_mean import SpatialMean_CHAN
 from log import log_results, log_results_no_label
-from utility import create_directories, calculate_number_of_dilated_pixel, extract_highest_probability_pixel, calculate_mse_predicted_to_annotation
+from utility import create_directories, calculate_number_of_dilated_pixel, extract_highest_probability_pixel, calculate_mse_predicted_to_annotation, calculate_angle
 from visualization import save_predictions_as_images, box_plot
 from dataset import load_data
 
 
-def train_function(args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, optimizer, loader):
+def train_function(args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, loss_fn_angle, optimizer, loader):
     loop = tqdm(loader)
+    total_loss, total_pixel_loss, total_geom_loss, total_angle_loss = 0, 0, 0, 0
+    loss = None
 
-    for data, targets, _, _ in loop:
+    for data, targets, _, label_list in loop:
         data    = data.to(device=DEVICE)
         targets = targets.float().to(device=DEVICE)
 
@@ -35,9 +38,20 @@ def train_function(args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, optimiz
         targets_spatial_mean          = targets_spatial_mean_function(targets)
         loss_geometry                 = loss_fn_geometry(predict_spatial_mean, targets_spatial_mean)
 
-        if args.only_pixel:  loss = loss_pixel
-        elif args.only_geom: loss = loss_geometry
-        else:                loss = args.loss_weight*loss_pixel + loss_geometry 
+        ## calculate the difference between GT angle and predicted angle
+        angle_pred, angle_gt = [], []
+        for i in range(len(predictions)):
+            index_list = extract_highest_probability_pixel(args, predictions[i].unsqueeze(0))
+            angle_pred.append([calculate_angle(args, index_list, "preds")])
+            angle_gt.append([calculate_angle(args, label_list, "label")])
+        loss_angle = loss_fn_angle(torch.Tensor(angle_pred), torch.Tensor(angle_gt))
+
+        if args.pixel_loss:
+            loss = loss_pixel
+        if args.geom_loss:  
+            loss = args.geom_loss_weight*loss_pixel + loss_geometry 
+        if args.angle_loss: 
+            loss = args.angle_loss_weight*loss_pixel + loss_angle 
 
         ## backward
         optimizer.zero_grad()
@@ -47,7 +61,12 @@ def train_function(args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, optimiz
         # update tqdm loop
         loop.set_postfix(loss=loss.item())
 
-    return loss.item(), loss_pixel.item(), loss_geometry.item()
+        total_loss       += loss.item()
+        total_pixel_loss += loss_pixel.item() 
+        total_geom_loss  += loss_geometry.item()
+        total_angle_loss += loss_angle.item()
+
+    return loss.item(), loss_pixel.item(), loss_geometry.item(), loss_angle.item()
 
 
 def validate_function(loader, model, args, epoch, device):
@@ -60,7 +79,8 @@ def validate_function(loader, model, args, epoch, device):
     dice_score = 0
     highest_probability_pixels_list = []
     highest_probability_mse_total = 0
-    mse_list = [[0]*len(loader) for _ in range(8)]
+    total_diff_LDFA, total_diff_MPTA, total_diff_mHKA = 0, 0, 0
+    mse_list = [[0]*len(loader) for _ in range(args.output_channel)]
 
     with torch.no_grad():
         label_list_total = []
@@ -73,29 +93,26 @@ def validate_function(loader, model, args, epoch, device):
             else:               preds = torch.sigmoid(model(image))
 
             ## extract the pixel with highest probability value
-            index_list = extract_highest_probability_pixel(preds)
+            index_list = extract_highest_probability_pixel(args, preds)
             highest_probability_mse, mse_list = calculate_mse_predicted_to_annotation(
-                index_list, label_list, idx, mse_list
+                args, index_list, label_list, idx, mse_list
             )
-
-            """
-            ## extract pixel using spatial mean & calculating distance
-            predict_spatial_mean_function = SpatialMean_CHAN(list(preds.shape[1:]))
-            highest_probability_pixels    = predict_spatial_mean_function(preds)
-            highest_probability_pixels_list.append(highest_probability_pixels.detach().cpu().numpy())
-            highest_probability_mse, mse_list       = calculate_mse_predicted_to_annotation(
-                highest_probability_pixels, label_list, idx, mse_list
-            )
-            """
             
             highest_probability_pixels_list.append(index_list)
             highest_probability_mse_total += highest_probability_mse
+
+            ## calculate angles for evaluation
+            LDFA   , MPTA   , mHKA    = calculate_angle(args, index_list, "preds")
+            LDFA_GT, MPTA_GT, mHKA_GT = calculate_angle(args, label_list, "label")
+            total_diff_LDFA += abs(LDFA_GT-LDFA)
+            total_diff_MPTA += abs(MPTA_GT-MPTA)
+            total_diff_mHKA += abs(mHKA_GT-mHKA)
 
             ## make predictions to be 0. or 1.
             preds = (preds > 0.5).float()
 
             ## compare only labels
-            if (epoch % 10 == 0 or epoch % 50 == 49) and args.wandb:
+            if (epoch % 10 == 0 or epoch % args.dilation_epoch == (args.dilation_epoch-1)) and args.wandb:
                 for i in range(len(preds[0][0])):
                     for j in range(len(preds[0][0][i])):
                         if float(label[0][0][i][j]) == 1.0:
@@ -117,23 +134,28 @@ def validate_function(loader, model, args, epoch, device):
     whole_image_accuracy = num_correct/num_pixels*100
     dice = dice_score/len(loader)
 
-    if epoch % 10 == 0 or epoch % 50 == 49:
+    if epoch % 10 == 0 or epoch % args.dilation_epoch == (args.dilation_epoch-1):
         label_accuracy = (num_labels_correct/(num_labels+(1e-8))) * 100        ## from GT, how many of them were predicted
         label_accuracy2 = (prediction_correct/(predict_as_label+(1e-8))) * 100 ## from prediction, how many of them were GT
+        print(f"Dice score: {dice}")
         print(f"Number of pixels predicted as label: {predict_as_label}")
         print(f"From Prediction: Got {prediction_correct}/{predict_as_label} with acc {label_accuracy2:.2f}")
         print(f"From Ground Truth: Got {num_labels_correct}/{num_labels} with acc {label_accuracy:.2f}")
         
     print(f"Got {num_correct}/{num_pixels} with acc {whole_image_accuracy:.2f}")
-    print(f"Dice score: {dice}")
     print(f"Pixel to Pixel Distance: {highest_probability_mse_total/len(loader)}")
+    print(f"Angular Difference: {[total_diff_LDFA/len(loader), total_diff_MPTA/len(loader), total_diff_mHKA/len(loader)]}")
     model.train()
 
     evaluation_list = [label_accuracy, label_accuracy2, whole_image_accuracy, predict_as_label, dice]
-    return model, evaluation_list, highest_probability_pixels_list, highest_probability_mse_total, mse_list, label_list_total
+    angle_list = [total_diff_LDFA, total_diff_MPTA, total_diff_mHKA]
+    return model, evaluation_list, highest_probability_pixels_list, highest_probability_mse_total, mse_list, label_list_total, angle_list
 
 
-def train(args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, optimizer, train_loader, val_loader):
+def train(
+        args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, loss_fn_angle,
+        optimizer, train_loader, val_loader
+    ):
     count, pth_save_point, best_loss = 0, 0, np.inf
     create_directories(args, folder='./plot_results')
     
@@ -158,10 +180,10 @@ def train(args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, optimizer, train
                 print(f"Current weight for positive values is {weight}")
                 loss_fn_pixel = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([weight], device=DEVICE))
 
-        loss, loss_pixel, loss_geometry = train_function(
-            args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, optimizer, train_loader
+        loss, loss_pixel, loss_geometry, loss_angle = train_function(
+            args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, loss_fn_angle, optimizer, train_loader
         )
-        model, evaluation_list, highest_probability_pixels_list, highest_probability_mse_total, mse_list, label_list_total = validate_function(
+        model, evaluation_list, highest_probability_pixels_list, highest_probability_mse_total, mse_list, label_list_total, angle_list = validate_function(
             val_loader, model, args, epoch, device=DEVICE
         )
 
@@ -170,7 +192,8 @@ def train(args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, optimizer, train
             "optimizer":  optimizer.state_dict(),
         }
 
-        # if pth_save_point % 5 == 0: torch.save(checkpoint, f"./results/UNet_Epoch_{epoch}.pth")
+        # if pth_save_point % 5 == 0: 
+        #     torch.save(checkpoint, f"./results/UNet_Epoch_{epoch}.pth")
         # pth_save_point += 1
 
         print("Current loss ", loss)
@@ -192,14 +215,18 @@ def train(args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, optimizer, train
             torch.save(checkpoint, f"./results/{args.wandb_name}.pth")
             box_plot(args, mse_list)
 
+        print(f'pixel loss: {loss_pixel}, geometry loss: {loss_geometry}, angle loss: {loss_angle}')
+
         if args.wandb:
-            if epoch % 10 == 0 or epoch % 50 == 49: 
+            if epoch % 10 == 0 or epoch % args.dilation_epoch == (args.dilation_epoch-1): 
                 log_results(
-                    args, loss, loss_pixel, loss_geometry, evaluation_list, highest_probability_mse_total, mse_list, len(val_loader)
+                    args, loss, loss_pixel, loss_geometry, loss_angle, 
+                    evaluation_list, angle_list, highest_probability_mse_total, mse_list, len(val_loader)
                 )
             else:               
                 log_results_no_label(
-                    args, loss, loss_pixel, loss_geometry, evaluation_list, highest_probability_mse_total, mse_list, len(val_loader)
+                    args, loss, loss_pixel, loss_geometry, loss_angle, 
+                    evaluation_list, angle_list, highest_probability_mse_total, mse_list, len(val_loader)
                 )
 
         if args.patience and count == args.patience_threshold:
