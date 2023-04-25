@@ -11,7 +11,7 @@ from tqdm import tqdm
 
 from spatial_mean import SpatialMean_CHAN
 from log import log_results, log_results_no_label
-from utility import create_directories, calculate_number_of_dilated_pixel, extract_highest_probability_pixel, calculate_mse_predicted_to_annotation, calculate_angle
+from utility import create_directories, calculate_number_of_dilated_pixel, extract_highest_probability_pixel, calculate_mse_predicted_to_annotation, calculate_angle, compare_labels
 from visualization import save_predictions_as_images, box_plot
 from dataset import load_data
 
@@ -20,6 +20,7 @@ def train_function(args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, loss_fn
     loop = tqdm(loader)
     total_loss, total_pixel_loss, total_geom_loss, total_angle_loss = 0, 0, 0, 0
     loss = None
+    model.train()
 
     for data, targets, _, label_list in loop:
         data    = data.to(device=DEVICE)
@@ -47,11 +48,13 @@ def train_function(args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, loss_fn
         loss_angle = loss_fn_angle(torch.Tensor(angle_pred), torch.Tensor(angle_gt))
 
         if args.pixel_loss:
-            loss = loss_pixel
-        if args.geom_loss:  
-            loss = args.geom_loss_weight*loss_pixel + loss_geometry 
-        if args.angle_loss: 
-            loss = args.angle_loss_weight*loss_pixel + loss_angle 
+            if args.angle_loss: 
+                loss = args.angle_loss_weight*loss_pixel + loss_angle 
+            else:
+                loss = loss_pixel
+        # if args.geom_loss:  
+        #     loss = args.geom_loss_weight*loss_pixel + loss_geometry 
+        
 
         ## backward
         optimizer.zero_grad()
@@ -113,17 +116,15 @@ def validate_function(loader, model, args, epoch, device):
 
             ## compare only labels
             if (epoch % 10 == 0 or epoch % args.dilation_epoch == (args.dilation_epoch-1)) and args.wandb:
-                for i in range(len(preds[0][0])):
-                    for j in range(len(preds[0][0][i])):
-                        if float(label[0][0][i][j]) == 1.0:
-                            num_labels += 1
-                            if float(preds[0][0][i][j]) == 1.0:
-                                num_labels_correct += 1
-
-                        if float(preds[0][0][i][j]) == 1.0:
-                            predict_as_label += 1
-                            if float(label[0][0][i][j]) == 1.0:
-                                prediction_correct += 1
+                if args.dilation_epoch >= 10:
+                    num_labels, num_labels_correct, predict_as_label, prediction_correct = compare_labels(
+                        preds, label, num_labels, num_labels_correct, predict_as_label, prediction_correct
+                    )
+                else:
+                    if epoch % 10 > 3 and epoch % 10 < 7:
+                        num_labels, num_labels_correct, predict_as_label, prediction_correct = compare_labels(
+                            preds, label, num_labels, num_labels_correct, predict_as_label, prediction_correct
+                        )
 
             # compare whole picture
             num_correct += (preds == label).sum()
@@ -156,7 +157,8 @@ def train(
         args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, loss_fn_angle,
         optimizer, train_loader, val_loader
     ):
-    count, pth_save_point, best_loss = 0, 0, np.inf
+    count, pth_save_point = 0, 0
+    best_loss, best_angle_mean, best_rmse_mean = np.inf, 89.99, np.inf
     create_directories(args, folder='./plot_results')
     
     for epoch in range(args.epochs):
@@ -192,41 +194,46 @@ def train(
             "optimizer":  optimizer.state_dict(),
         }
 
-        # if pth_save_point % 5 == 0: 
-        #     torch.save(checkpoint, f"./results/UNet_Epoch_{epoch}.pth")
-        # pth_save_point += 1
-
         print("Current loss ", loss)
         if best_loss > loss:
             print("=====New best model=====")
-            # torch.save(checkpoint, f"./results/best.pth")
-            # save_predictions_as_images(args, val_loader, model, epoch, highest_probability_pixels_list, device=DEVICE)
             best_loss, count = loss, 0
         else:
             count += 1
 
-        ## For time efficiency, do not save visualized images
         if not args.no_image_save:
-            ## For MIDL, always save visualization rather when having best loss
             save_predictions_as_images(args, val_loader, model, epoch, highest_probability_pixels_list, label_list_total, device=DEVICE)
 
-        ## On the last epoch, save the model & create a box plot
+        
+        # if pth_save_point % 5 == 0: 
+        #     torch.save(checkpoint, f"./results/UNet_Epoch_{epoch}.pth")
+        # pth_save_point += 1
+
+        if sum(angle_list)/(len(val_loader)*3) < best_angle_mean:
+            best_angle_mean = sum(angle_list)/(len(val_loader)*3)
+            torch.save(checkpoint, f'./plot_results/{args.wandb_name}/results/{args.wandb_name}_best.pth')
         if epoch == args.epochs - 1:
-            torch.save(checkpoint, f"./results/{args.wandb_name}.pth")
+            torch.save(checkpoint, f'./plot_results/{args.wandb_name}/results/{args.wandb_name}.pth')
             box_plot(args, mse_list)
 
+        if highest_probability_mse_total/len(val_loader) < best_rmse_mean:
+            best_rmse_mean = highest_probability_mse_total/len(val_loader)
+
         print(f'pixel loss: {loss_pixel}, geometry loss: {loss_geometry}, angle loss: {loss_angle}')
+        print(f'best average rmse diff: {best_rmse_mean}, best average angle diff: {best_angle_mean}')
 
         if args.wandb:
             if epoch % 10 == 0 or epoch % args.dilation_epoch == (args.dilation_epoch-1): 
                 log_results(
                     args, loss, loss_pixel, loss_geometry, loss_angle, 
-                    evaluation_list, angle_list, highest_probability_mse_total, mse_list, len(val_loader)
+                    evaluation_list, angle_list, best_angle_mean, 
+                    highest_probability_mse_total, mse_list, best_rmse_mean, len(val_loader)
                 )
             else:               
                 log_results_no_label(
                     args, loss, loss_pixel, loss_geometry, loss_angle, 
-                    evaluation_list, angle_list, highest_probability_mse_total, mse_list, len(val_loader)
+                    evaluation_list, angle_list, best_angle_mean, 
+                    highest_probability_mse_total, mse_list, best_rmse_mean, len(val_loader)
                 )
 
         if args.patience and count == args.patience_threshold:

@@ -11,7 +11,8 @@ def initiate_wandb(args):
 
 def log_results_no_label(
         args, loss, loss_pixel, loss_geometry, loss_angle, 
-        evaluation_list, angle_list, highest_probability_mse, mse_list, val_loader_len
+        evaluation_list, angle_list, best_angle_mean, 
+        highest_probability_mse, mse_list, best_rmse_mean, val_loader_len
     ):
     if args.output_channel == 6:
         wandb.log({
@@ -22,12 +23,15 @@ def log_results_no_label(
             'Whole Image Accuracy': evaluation_list[2],
             'DICE Score': evaluation_list[4],
             'Average RMSE': highest_probability_mse/val_loader_len,
+            'Best RMSE Mean': best_rmse_mean,
             'Medial Femur': sum(mse_list[0])/val_loader_len,
             'Implant Upper Left': sum(mse_list[1])/val_loader_len,
             'Implant Upper Center': sum(mse_list[2])/val_loader_len,
             'Implant Lower Left': sum(mse_list[3])/val_loader_len,
             'Implant Lower Center': sum(mse_list[4])/val_loader_len,
             'Medial Tibia': sum(mse_list[5])/val_loader_len,
+            'Average Angle Difference': sum(angle_list)/(val_loader_len*3),
+            'Best Angle Difference': best_angle_mean,
             'LDFA Difference': angle_list[0]/val_loader_len,
             'MPTA Difference': angle_list[1]/val_loader_len,
             'mHKA Difference': angle_list[2]/val_loader_len,
@@ -41,6 +45,7 @@ def log_results_no_label(
             'Whole Image Accuracy': evaluation_list[2],
             'DICE Score': evaluation_list[4],
             'Average RMSE': highest_probability_mse/val_loader_len,
+            'Best RMSE Mean': best_rmse_mean,
             'Medial Femur': sum(mse_list[0])/val_loader_len,
             'Implant Upper Left': sum(mse_list[1])/val_loader_len,
             'Implant Upper Right': sum(mse_list[2])/val_loader_len,
@@ -49,6 +54,8 @@ def log_results_no_label(
             'Implant Lower Right': sum(mse_list[5])/val_loader_len,
             'Implant Lower Center': sum(mse_list[6])/val_loader_len,
             'Medial Tibia': sum(mse_list[7])/val_loader_len,
+            'Average Angle Difference': sum(angle_list)/(val_loader_len*3),
+            'Best Angle Difference': best_angle_mean,
             'LDFA Difference': angle_list[0]/val_loader_len,
             'MPTA Difference': angle_list[1]/val_loader_len,
             'mHKA Difference': angle_list[2]/val_loader_len,
@@ -57,7 +64,8 @@ def log_results_no_label(
 
 def log_results(
         args, loss, loss_pixel, loss_geometry, loss_angle, 
-        evaluation_list, angle_list, highest_probability_mse, mse_list, val_loader_len
+        evaluation_list, angle_list, best_angle_mean, 
+        highest_probability_mse, mse_list, best_rmse_mean, val_loader_len
     ):
     if args.output_channel == 6:
         wandb.log({
@@ -71,12 +79,15 @@ def log_results(
             'Predicted as Label': evaluation_list[3],
             'DICE Score': evaluation_list[4],
             'Average RMSE': highest_probability_mse/val_loader_len,
+            'Best RMSE Mean': best_rmse_mean,
             'Medial Femur': sum(mse_list[0])/val_loader_len,
             'Implant Upper Left': sum(mse_list[1])/val_loader_len,
             'Implant Upper Center': sum(mse_list[2])/val_loader_len,
             'Implant Lower Left': sum(mse_list[3])/val_loader_len,
             'Implant Lower Center': sum(mse_list[4])/val_loader_len,
             'Medial Tibia': sum(mse_list[5])/val_loader_len,
+            'Average Angle Difference': sum(angle_list)/(val_loader_len*3),
+            'Best Angle Difference': best_angle_mean,
             'LDFA Difference': angle_list[0]/val_loader_len,
             'MPTA Difference': angle_list[1]/val_loader_len,
             'mHKA Difference': angle_list[2]/val_loader_len,
@@ -93,6 +104,7 @@ def log_results(
             'Predicted as Label': evaluation_list[3],
             'DICE Score': evaluation_list[4],
             'Average RMSE': highest_probability_mse/val_loader_len,
+            'Best RMSE Mean': best_rmse_mean,
             'Medial Femur': sum(mse_list[0])/val_loader_len,
             'Implant Upper Left': sum(mse_list[1])/val_loader_len,
             'Implant Upper Right': sum(mse_list[2])/val_loader_len,
@@ -101,6 +113,8 @@ def log_results(
             'Implant Lower Right': sum(mse_list[5])/val_loader_len,
             'Implant Lower Center': sum(mse_list[6])/val_loader_len,
             'Medial Tibia': sum(mse_list[7])/val_loader_len,
+            'Average Angle Difference': sum(angle_list)/(val_loader_len*3),
+            'Best Angle Difference': best_angle_mean,
             'LDFA Difference': angle_list[0]/val_loader_len,
             'MPTA Difference': angle_list[1]/val_loader_len,
             'mHKA Difference': angle_list[2]/val_loader_len,

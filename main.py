@@ -61,6 +61,7 @@ def main(args):
 
     if args.multi_gpu:
         model = nn.DataParallel(model)
+        model.cuda()
     else:
         model.cuda()
 
