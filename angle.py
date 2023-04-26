@@ -4,23 +4,22 @@ import segmentation_models_pytorch as smp
 
 from tqdm import tqdm
 
+from argument import arg_as_list
 from dataset import load_data
-# from model import get_pretrained_model
 from utility import extract_highest_probability_pixel, calculate_mse_predicted_to_annotation, calculate_angle
+from visualization import angle_visualization
 
 
-def get_pretrained_model(DEVICE):
+def get_pretrained_model(args, DEVICE):
     print("---------- Loading Model Pretrained ----------")
 
-    ENCODER = 'resnet101'
-    ENCODER_WEIGHTS = 'imagenet'
-    ACTIVATION = 'sigmoid' # could be None for logits or 'softmax2d' for multiclass segmentation
-
     model = smp.Unet(
-        encoder_name=ENCODER, 
-        encoder_weights=ENCODER_WEIGHTS, 
-        classes=6, 
-        activation=ACTIVATION,
+        encoder_name    = 'resnet101', 
+        encoder_weights = 'imagenet', 
+        encoder_depth   = args.encoder_depth,
+        classes         = args.output_channel, 
+        activation      = 'sigmoid',
+        decoder_channels= args.decoder_channel,
     )
     return model.to(DEVICE)
 
@@ -29,15 +28,20 @@ def main(args):
     DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
     print(f'Torch is running on {DEVICE}')
 
-    model = get_pretrained_model(DEVICE)
-    checkpoint = torch.load('./results/MIDL_D60-10_W_P_progressive_weighted_erosion_epoch300.pth')
+    model = get_pretrained_model(args, DEVICE)
+
+    experiment = 'Label6_D68-2_to2_AW-P1000+A_every10_chx2'
+    path = f'./plot_results/{experiment}/results/{experiment}_best.pth'
+    checkpoint = torch.load(path)
+
     model.load_state_dict(checkpoint['state_dict'])
     model.eval()
 
     _, val_loader = load_data(args)
 
-    for idx, (image, _, _, label_list) in enumerate(val_loader):
-        print(f"===== validation {idx} =====")
+    total_LDFA, total_MPTA, total_mHKA = 0, 0, 0 
+    for idx, (image, _, data_path, label_list) in enumerate(tqdm(val_loader)):
+        # print(f"===== validation {idx} =====")
         image = image.to(device=DEVICE)
 
         with torch.no_grad():
@@ -48,10 +52,20 @@ def main(args):
         
         LDFA   , MPTA   , mHKA    = calculate_angle(args, index_list, "preds")
         LDFA_GT, MPTA_GT, mHKA_GT = calculate_angle(args, label_list, "label")
-        print(f"LDFA   , MPTA   , mHKA   : {LDFA:.2f}, {MPTA:.2f}, {mHKA:.2f}")
-        print(f"LDFA_GT, MPTA_GT, mHKA_GT: {LDFA_GT:.2f}, {MPTA_GT:.2f}, {mHKA_GT:.2f}")
-        print(f"Difference: {LDFA-LDFA_GT:.2f}, {MPTA-MPTA_GT:.2f}, {mHKA-mHKA_GT:.2f}")
+        # print(f"LDFA   , MPTA   , mHKA   : {LDFA:.2f}, {MPTA:.2f}, {mHKA:.2f}")
+        # print(f"LDFA_GT, MPTA_GT, mHKA_GT: {LDFA_GT:.2f}, {MPTA_GT:.2f}, {mHKA_GT:.2f}")
+        # print(f"Difference: {LDFA-LDFA_GT:.2f}, {MPTA-MPTA_GT:.2f}, {mHKA-mHKA_GT:.2f}")
+        
+        total_LDFA += abs(LDFA-LDFA_GT)
+        total_MPTA += abs(MPTA-MPTA_GT)
+        total_mHKA += abs(mHKA-mHKA_GT)
 
+        angles = [LDFA, MPTA, mHKA, LDFA_GT, MPTA_GT, mHKA_GT]
+        angle_visualization(args, experiment, data_path, idx, 300, index_list, label_list, 0, angles, "without label")
+        angle_visualization(args, experiment, data_path, idx, 300, index_list, label_list, 0, angles, "with label")
+
+    print(f"Average Difference: {total_LDFA/len(val_loader):.2f}, {total_MPTA/len(val_loader):.2f}, {total_mHKA/len(val_loader):.2f}")
+    
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -61,8 +75,10 @@ if __name__ == '__main__':
     parser.add_argument('--pad_image', action='store_true', help='whether to pad the original image')
     parser.add_argument('--create_dataset', action='store_true', help='whether to create dataset or not')
     parser.add_argument('--multi_gpu', action='store_true', help='whether to use multiple gpus or not')
-    parser.add_argument('--only_pixel', action='store_true', help='whether to use only pixel loss')
-    parser.add_argument('--only_geom', action='store_true', help='whether to use only geometry loss')
+    parser.add_argument('--pixel_loss', action='store_true', help='whether to use only pixel loss')
+    parser.add_argument('--geom_loss', action='store_true', help='whether to use only geometry loss')
+    parser.add_argument('--angle_loss', action='store_true', help='whether to use only angular loss')
+    parser.add_argument('--augmentation', action='store_true', help='whether to use augmentation')
     parser.add_argument('--patience', action='store_true', help='whether to stop when loss does not decrease')
     parser.add_argument('--progressive_erosion', action='store_true', help='whether to use progressive erosion')
     parser.add_argument('--progressive_weight', action='store_true', help='whether to use progressive weight')
@@ -100,11 +116,12 @@ if __name__ == '__main__':
     parser.add_argument('--input_channel', type=int, default=3, help='input channel size for UNet')
     parser.add_argument('--output_channel', type=int, default=6, help='output channel size for UNet')
     parser.add_argument('--encoder_depth', type=int, default=5, help='model depth for UNet')
-    # parser.add_argument("--decoder_channel", type=arg_as_list, default=[256,128,64,32,16], help='model decoder channels')
+    parser.add_argument("--decoder_channel", type=arg_as_list, default=[256,128,64,32,16], help='model decoder channels')
     parser.add_argument('--lr', '--learning_rate', type=float, default=1e-4, help='learning rate')
     parser.add_argument('--epochs', type=int, default=1000, help='number of epochs')
     parser.add_argument('--patience_threshold', type=int, default=10, help='early stopping threshold')
-    parser.add_argument('--loss_weight', type=int, default=1, help='weight of the loss function')
+    parser.add_argument('--geom_loss_weight', type=int, default=1, help='weight of the loss function')
+    parser.add_argument('--angle_loss_weight', type=int, default=1, help='weight of the loss function')
 
     ## hyperparameters - results
     parser.add_argument('--threshold', type=float, default=0.5, help='threshold for binary prediction')

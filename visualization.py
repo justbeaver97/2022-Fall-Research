@@ -23,6 +23,10 @@ Reference:
     >  - Expected Ptr<cv::UMat> for argument 'img':
         https://github.com/opencv/opencv/issues/18120
         cv2 functions expects numpy array
+    draw line in image:
+        https://antilibrary.org/2705
+    draw text in image:
+        https://www.geeksforgeeks.org/python-pil-imagedraw-draw-text/
 """
 
 import torch
@@ -33,7 +37,7 @@ import numpy as np
 import cv2
 
 from tqdm import tqdm
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 
 
 def save_label_image(args, label_tensor, data_path, label_list):
@@ -48,16 +52,10 @@ def save_label_image(args, label_tensor, data_path, label_list):
 
 
 def save_heatmap(preds, preds_binary, args, epoch):
-    if args.pixel_loss and (epoch % 10 == 0 or epoch % args.dilation_epoch == (args.dilation_epoch-1)):
-        for i in range(len(preds[0])):
-            plt.imshow(preds[0][i].detach().cpu().numpy(), cmap='hot', interpolation='nearest')
-            plt.savefig(f'./plot_results/{args.wandb_name}/label{i}/epoch_{epoch}_heatmap.png')
-            torchvision.utils.save_image(preds_binary[0][i], f'./plot_results/{args.wandb_name}/label{i}/epoch_{epoch}.png')
-    elif not args.pixel_loss:
-        for i in range(len(preds[0])):
-            plt.imshow(preds[0][i].detach().cpu().numpy(), cmap='hot', interpolation='nearest')
-            plt.savefig(f'./plot_results/{args.wandb_name}/label{i}/epoch_{epoch}_heatmap.png')
-            torchvision.utils.save_image(preds_binary[0][i], f'./plot_results/{args.wandb_name}/epoch_{epoch}.png')
+    for i in range(len(preds[0])):
+        plt.imshow(preds[0][i].detach().cpu().numpy(), cmap='hot', interpolation='nearest')
+        plt.savefig(f'./plot_results/{args.wandb_name}/label{i}/epoch_{epoch}_heatmap.png')
+        torchvision.utils.save_image(preds_binary[0][i], f'./plot_results/{args.wandb_name}/label{i}/epoch_{epoch}.png')
 
 
 def prediction_plot(args, idx, highest_probability_pixels_list, i, original):
@@ -110,13 +108,17 @@ def save_predictions_as_images(args, loader, model, epoch, highest_probability_p
         ## TODO: record heatmaps even if the loss hasn't decreased
         if epoch == 0 and idx == 0: 
             save_label_image(args, label, data_path, label_list)
-        if idx == 0:
-            save_heatmap(preds, preds_binary, args, epoch)
-        if epoch % 10 == 0 or epoch % args.dilation_epoch == (args.dilation_epoch-1):
-            save_overlaid_image(args, idx, preds_binary, data_path, highest_probability_pixels_list, label_list, epoch)
-            
-    model.train()
-
+        if args.pixel_loss and (epoch % 10 == 0 or epoch % args.dilation_epoch == (args.dilation_epoch-1)):
+            if args.dilation_epoch >= 10:
+                save_overlaid_image(args, idx, preds_binary, data_path, highest_probability_pixels_list, label_list, epoch)
+                if idx == 0:
+                    save_heatmap(preds, preds_binary, args, epoch)
+            else:
+                if epoch % 10 > 3 and epoch % 10 < 7:
+                    save_overlaid_image(args, idx, preds_binary, data_path, highest_probability_pixels_list, label_list, epoch)
+                    if idx == 0:
+                        save_heatmap(preds, preds_binary, args, epoch)
+                    
 
 def printsave(name, *a):
     file = open(f'./plot_data/box_plot/txt_files/{name}.txt','a')
@@ -127,3 +129,87 @@ def box_plot(args, mse_list):
     ## I can't make box plot of 3 different methods 
     ## I have to just save it as a file, and then create it from saved text files
     printsave(f'{args.wandb_name}_MSE_LIST', mse_list)
+
+
+def draw_line(draw, line_pixel, rgb, line_width, pixels):
+    draw.line(line_pixel[0], fill=rgb[0], width=line_width)
+    draw.line(line_pixel[1], fill=rgb[0], width=line_width)
+    draw.line(line_pixel[2], fill=rgb[2], width=line_width)
+    draw.line(line_pixel[3], fill=rgb[2], width=line_width)
+    draw.line(line_pixel[4], fill=rgb[1], width=line_width)
+    return draw
+
+
+def draw_text(draw, text_pixel, text, rgb, font):
+    draw.text(text_pixel[0], text[0], fill=rgb[0], align ="left", font=font) 
+    draw.text(text_pixel[1], text[1], fill=rgb[2], align ="left", font=font) 
+    draw.text(text_pixel[2], text[2], fill=rgb[1], align ="left", font=font) 
+    return draw
+
+
+def angle_visualization(
+        args, experiment, data_path, idx, epoch, highest_probability_pixels_list, label_list, i, angles, method
+    ):
+    if method == "with label":
+        image_path = f'{args.overlaid_padded_image}/{data_path[0]}'
+        line_width, circle_size = 1, 4
+    elif method == "without label":
+        image_path = f'{args.padded_image}/{data_path[0]}'
+        line_width, circle_size = 3, 5
+
+    pixel_overlaid_image = Image.open(image_path).resize((args.image_resize,args.image_resize)).convert("RGB")
+    LDFA_text = f'LDFA: {angles[0]:.2f}\nAnswer: {angles[3]:.2f}'
+    MPTA_text = f'MPTA: {angles[1]:.2f}\nAnswer: {angles[4]:.2f}'
+    mHKA_text = f'mHKA: {angles[2]:.2f}\nAnswer: {angles[5]:.2f}'
+    red, green, blue = (255, 0, 0), (0,102,0), (0, 0, 255)
+
+    rgb = [(255, 0, 0), (0,102,0), (0, 0, 255)]
+    text = [LDFA_text, MPTA_text, mHKA_text]
+
+    count, pixels = 0, []
+    font = ImageFont.truetype("plot_data/font/Gidole-Regular.ttf", size=15)
+
+    for i in range(args.output_channel):
+        # x, y = int(highest_probability_pixels_list[idx][i][0][1]), int(highest_probability_pixels_list[idx][i][0][0])
+        x, y = int(highest_probability_pixels_list[i][0][1]), int(highest_probability_pixels_list[i][0][0])
+        pixels.append([x,y])
+       
+        if count <= 2: pixel_overlaid_image = Image.fromarray(cv2.circle(np.array(pixel_overlaid_image), (x,y), circle_size, red,-1))
+        else:          pixel_overlaid_image = Image.fromarray(cv2.circle(np.array(pixel_overlaid_image), (x,y), circle_size, blue,-1))
+        count += 1
+    
+    draw = ImageDraw.Draw(pixel_overlaid_image)
+    if args.output_channel == 6:
+        line1 = ((pixels[0][0],pixels[0][1]),(pixels[2][0],pixels[2][1]))
+        line2 = ((pixels[1][0],pixels[1][1]),(pixels[2][0],pixels[2][1]))
+        line3 = ((pixels[3][0],pixels[3][1]),(pixels[4][0],pixels[4][1]))
+        line4 = ((pixels[5][0],pixels[5][1]),(pixels[4][0],pixels[4][1]))
+        line5 = ((pixels[5][0],pixels[5][1]),(pixels[2][0],pixels[2][1]))
+        line_pixel = [line1, line2, line3, line4, line5]
+
+        text_pixel = [
+            (((pixels[0][0]+pixels[1][0])/2-90), (2*pixels[0][1]+5*pixels[1][1])/7),
+            (((pixels[3][0]+pixels[5][0])/2-90), (4*pixels[3][1]+pixels[5][1])/5),
+            (((pixels[0][0]+pixels[5][0])/2+50), (pixels[0][1]+pixels[5][1])/2),   
+        ]
+    elif args.output_channel == 8:
+        line1 = ((pixels[0][0],pixels[0][1]),(pixels[3][0],pixels[3][1]))
+        line2 = ((pixels[1][0],pixels[1][1]),(pixels[3][0],pixels[3][1]))
+        line3 = ((pixels[4][0],pixels[4][1]),(pixels[6][0],pixels[6][1]))
+        line4 = ((pixels[7][0],pixels[7][1]),(pixels[6][0],pixels[6][1]))
+        line5 = ((pixels[7][0],pixels[7][1]),(pixels[3][0],pixels[3][1]))
+        line_pixel = [line1, line2, line3, line4, line5]
+
+        text_pixel = [
+            (((pixels[0][0]+pixels[1][0])/2-90), (2*pixels[0][1]+5*pixels[1][1])/7),
+            (((pixels[4][0]+pixels[7][0])/2-90), (4*pixels[4][1]+pixels[7][1])/5),
+            (((pixels[0][0]+pixels[7][0])/2+50), (pixels[0][1]+pixels[7][1])/2),   
+        ]
+
+    draw = draw_line(draw, line_pixel, rgb, line_width, pixels)
+    draw = draw_text(draw, text_pixel, text, rgb, font)
+
+    if method == "with label":
+        pixel_overlaid_image.save(f'./plot_results/{experiment}/angles/val{idx}_angle_with_label.png')
+    elif method == "without label":
+        pixel_overlaid_image.save(f'./plot_results/{experiment}/angles/val{idx}_angle.png')
