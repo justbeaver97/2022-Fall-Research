@@ -160,24 +160,47 @@ def load_data(args):
     train_df = dataset_df[:split_point]
     val_df = dataset_df[split_point:]
 
-    train_transform = A.Compose([
-        A.Resize(height=IMAGE_RESIZE, width=IMAGE_RESIZE),
-        A.Normalize(
-            mean=(0.485, 0.456, 0.406),
-            std=(0.229, 0.224, 0.225),
-            max_pixel_value=255.0,
-        ),
-        ToTensorV2(),
-    ])
-    val_transform = A.Compose([
-        A.Resize(height=IMAGE_RESIZE, width=IMAGE_RESIZE),
-        A.Normalize(
-            mean=(0.485, 0.456, 0.406),
-            std=(0.229, 0.224, 0.225),
-            max_pixel_value=255.0,
-        ),
-        ToTensorV2(),
-    ])
+    if args.augmentation:
+        train_transform = A.Compose([
+            A.Resize(height=IMAGE_RESIZE, width=IMAGE_RESIZE),
+            A.Rotate(limit=5, p=0.3),
+            A.InvertImg(p=0.3),
+            # A.HorizontalFlip(p=0.05),
+            A.Normalize(
+                mean=(0.485, 0.456, 0.406),
+                std=(0.229, 0.224, 0.225),
+                max_pixel_value=255.0,
+            ),
+            ToTensorV2(),
+        ])
+        val_transform = A.Compose([
+            A.Resize(height=IMAGE_RESIZE, width=IMAGE_RESIZE),
+            A.Normalize(
+                mean=(0.485, 0.456, 0.406),
+                std=(0.229, 0.224, 0.225),
+                max_pixel_value=255.0,
+            ),
+            ToTensorV2(),
+        ])
+    else:
+        train_transform = A.Compose([
+            A.Resize(height=IMAGE_RESIZE, width=IMAGE_RESIZE),
+            A.Normalize(
+                mean=(0.485, 0.456, 0.406),
+                std=(0.229, 0.224, 0.225),
+                max_pixel_value=255.0,
+            ),
+            ToTensorV2(),
+        ])
+        val_transform = A.Compose([
+            A.Resize(height=IMAGE_RESIZE, width=IMAGE_RESIZE),
+            A.Normalize(
+                mean=(0.485, 0.456, 0.406),
+                std=(0.229, 0.224, 0.225),
+                max_pixel_value=255.0,
+            ),
+            ToTensorV2(),
+        ])
 
     train_dataset = CustomDataset(
         train_df, args, train_transform

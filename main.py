@@ -94,6 +94,7 @@ if __name__ == '__main__':
     parser.add_argument('--pixel_loss', action='store_true', help='whether to use only pixel loss')
     parser.add_argument('--geom_loss', action='store_true', help='whether to use only geometry loss')
     parser.add_argument('--angle_loss', action='store_true', help='whether to use only angular loss')
+    parser.add_argument('--augmentation', action='store_true', help='whether to use augmentation')
     parser.add_argument('--patience', action='store_true', help='whether to stop when loss does not decrease')
     parser.add_argument('--progressive_erosion', action='store_true', help='whether to use progressive erosion')
     parser.add_argument('--progressive_weight', action='store_true', help='whether to use progressive weight')
