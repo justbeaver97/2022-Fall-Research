@@ -91,6 +91,7 @@ if __name__ == '__main__':
     parser.add_argument('--pad_image', action='store_true', help='whether to pad the original image')
     parser.add_argument('--create_dataset', action='store_true', help='whether to create dataset or not')
     parser.add_argument('--multi_gpu', action='store_true', help='whether to use multiple gpus or not')
+    parser.add_argument('--no_sigmoid', action='store_true', help='whether not to use sigmoid at the end of the model')
     parser.add_argument('--pixel_loss', action='store_true', help='whether to use only pixel loss')
     parser.add_argument('--geom_loss', action='store_true', help='whether to use only geometry loss')
     parser.add_argument('--angle_loss', action='store_true', help='whether to use only angular loss')

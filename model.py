@@ -4,6 +4,9 @@ reference:
         https://www.kaggle.com/code/balraj98/unet-with-pretrained-resnet50-encoder-pytorch
     smp unet documentation:
         https://smp.readthedocs.io/en/latest/models.html
+    modifying model:
+        https://discuss.pytorch.org/t/how-to-delete-layer-in-pretrained-model/17648/44
+        https://sensibilityit.tistory.com/511
 """
 
 import torch
@@ -74,15 +77,19 @@ class UNET(nn.Module):
             concat_skip = torch.cat((skip_connection, x), dim=1)
             x = self.ups[idx+1](concat_skip)
 
-        ## need to do a sigmoid after the UNet -> in train.py
         return self.final_conv(x)
 
 
 def get_model(args, DEVICE):
     print("---------- Loading Not Pretrained Model ----------")
-    model = UNET(in_channels=3, out_channels=args.output_channel).to(DEVICE)
+    model = UNET(
+        in_channels  = 3, 
+        out_channels = args.output_channel,
+        features     = args.decoder_channel,
+    ).to(DEVICE)
     print("---------- Not Pretrained Model Loaded ----------")
-    return 
+    print(model)
+    return model.to(DEVICE)
 
 
 def get_pretrained_model(args, DEVICE):
@@ -96,5 +103,8 @@ def get_pretrained_model(args, DEVICE):
         activation      = 'sigmoid',
         decoder_channels= args.decoder_channel,
     )
+
     print("---------- Pretrained Model Loaded ----------")
+
+    model.segmentation_head = nn.Sequential(*list(model.segmentation_head.children())[:-1])
     return model.to(DEVICE)

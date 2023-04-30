@@ -1,11 +1,15 @@
 """
 reference:
-    train process: https://github.com/aladdinpersson/Machine-Learning-Collection
+    train process: 
+        https://github.com/aladdinpersson/Machine-Learning-Collection
+    deepcopy:
+        https://freshrimpsushi.github.io/posts/hot-to-deepcopy-pytorch-tensor/
 """
 
 import torch
 import torch.nn as nn
 import numpy as np
+import copy 
 
 from tqdm import tqdm
 
@@ -26,8 +30,33 @@ def train_function(args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, loss_fn
         data    = data.to(device=DEVICE)
         targets = targets.float().to(device=DEVICE)
 
-        if args.pretrained: predictions = model(data)
-        else:               predictions = torch.sigmoid(model(data))
+        # if args.pretrained:             
+            # if not args.no_sigmoid:
+                # model_no_sigmoid = copy.deepcopy(model)
+                # model_no_sigmoid.segmentation_head = nn.Sequential(
+                #     *list(model_no_sigmoid.segmentation_head.children())[:-1]
+                # )
+                # predictions_for_prob_pixel = model_no_sigmoid(data)
+            #     predictions =  torch.sigmoid(model(data))
+            # else:
+            #     predictions = model(data)
+        #     predictions =  torch.sigmoid(model(data))
+        #     if args.no_sigmoid:
+        #         predictions_for_prob_pixel = model(data)
+        #     else:
+        #         predictions_for_prob_pixel = torch.sigmoid(model(data))
+        # else:               
+        #     predictions = torch.sigmoid(model(data))
+        #     predictions_for_prob_pixel = model(data)
+
+            # if args.no_sigmoid:
+            #     predictions_for_prob_pixel = model(data)
+
+        predictions =  torch.sigmoid(model(data))
+        if args.no_sigmoid:
+            predictions_for_prob_pixel = model(data)
+        else:
+            predictions_for_prob_pixel = torch.sigmoid(model(data))
         
         # calculate log loss with pixel value
         loss_pixel = loss_fn_pixel(predictions, targets)
@@ -40,9 +69,16 @@ def train_function(args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, loss_fn
         loss_geometry                 = loss_fn_geometry(predict_spatial_mean, targets_spatial_mean)
 
         ## calculate the difference between GT angle and predicted angle
+        # angle_pred, angle_gt = [], []
+        # for i in range(len(predictions)):
+        #     index_list = extract_highest_probability_pixel(args, predictions[i].unsqueeze(0))
+        #     angle_pred.append([calculate_angle(args, index_list, "preds")])
+        #     angle_gt.append([calculate_angle(args, label_list, "label")])
+        # loss_angle = loss_fn_angle(torch.Tensor(angle_pred), torch.Tensor(angle_gt))
+
         angle_pred, angle_gt = [], []
-        for i in range(len(predictions)):
-            index_list = extract_highest_probability_pixel(args, predictions[i].unsqueeze(0))
+        for i in range(len(predictions_for_prob_pixel)):
+            index_list = extract_highest_probability_pixel(args, predictions_for_prob_pixel[i].unsqueeze(0))
             angle_pred.append([calculate_angle(args, index_list, "preds")])
             angle_gt.append([calculate_angle(args, label_list, "label")])
         loss_angle = loss_fn_angle(torch.Tensor(angle_pred), torch.Tensor(angle_gt))
@@ -54,7 +90,6 @@ def train_function(args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, loss_fn
                 loss = loss_pixel
         # if args.geom_loss:  
         #     loss = args.geom_loss_weight*loss_pixel + loss_geometry 
-        
 
         ## backward
         optimizer.zero_grad()
@@ -114,36 +149,38 @@ def validate_function(loader, model, args, epoch, device):
             ## make predictions to be 0. or 1.
             preds = (preds > 0.5).float()
 
-            ## compare only labels
-            if (epoch % 10 == 0 or epoch % args.dilation_epoch == (args.dilation_epoch-1)) and args.wandb:
-                if args.dilation_epoch >= 10:
-                    num_labels, num_labels_correct, predict_as_label, prediction_correct = compare_labels(
-                        preds, label, num_labels, num_labels_correct, predict_as_label, prediction_correct
-                    )
-                else:
-                    if epoch % 10 > 3 and epoch % 10 < 7:
-                        num_labels, num_labels_correct, predict_as_label, prediction_correct = compare_labels(
-                            preds, label, num_labels, num_labels_correct, predict_as_label, prediction_correct
-                        )
+            # ## compare only labels
+            # if (epoch % 10 == 0 or epoch % args.dilation_epoch == (args.dilation_epoch-1)) and args.wandb:
+            #     if args.dilation_epoch >= 10:
+            #         num_labels, num_labels_correct, predict_as_label, prediction_correct = compare_labels(
+            #             preds, label, num_labels, num_labels_correct, predict_as_label, prediction_correct
+            #         )
+            #     else:
+            #         if epoch % 10 > 3 and epoch % 10 < 7:
+            #             num_labels, num_labels_correct, predict_as_label, prediction_correct = compare_labels(
+            #                 preds, label, num_labels, num_labels_correct, predict_as_label, prediction_correct
+            #             )
 
             # compare whole picture
-            num_correct += (preds == label).sum()
-            num_pixels += torch.numel(preds)
+            # num_correct += (preds == label).sum()
+            # num_pixels += torch.numel(preds)
             dice_score += (2 * (preds * label).sum()) / ((preds + label).sum() + 1e-8)
 
     label_accuracy, label_accuracy2 = 0, 0
-    whole_image_accuracy = num_correct/num_pixels*100
+    whole_image_accuracy = 0
+    # whole_image_accuracy = num_correct/num_pixels*100
     dice = dice_score/len(loader)
 
-    if epoch % 10 == 0 or epoch % args.dilation_epoch == (args.dilation_epoch-1):
-        label_accuracy = (num_labels_correct/(num_labels+(1e-8))) * 100        ## from GT, how many of them were predicted
-        label_accuracy2 = (prediction_correct/(predict_as_label+(1e-8))) * 100 ## from prediction, how many of them were GT
-        print(f"Dice score: {dice}")
-        print(f"Number of pixels predicted as label: {predict_as_label}")
-        print(f"From Prediction: Got {prediction_correct}/{predict_as_label} with acc {label_accuracy2:.2f}")
-        print(f"From Ground Truth: Got {num_labels_correct}/{num_labels} with acc {label_accuracy:.2f}")
+    # if epoch % 10 == 0 or epoch % args.dilation_epoch == (args.dilation_epoch-1):
+        # label_accuracy = (num_labels_correct/(num_labels+(1e-8))) * 100        ## from GT, how many of them were predicted
+        # label_accuracy2 = (prediction_correct/(predict_as_label+(1e-8))) * 100 ## from prediction, how many of them were GT
+        # print(f"Dice score: {dice}")
+        # print(f"Number of pixels predicted as label: {predict_as_label}")
+        # print(f"From Prediction: Got {prediction_correct}/{predict_as_label} with acc {label_accuracy2:.2f}")
+        # print(f"From Ground Truth: Got {num_labels_correct}/{num_labels} with acc {label_accuracy:.2f}")
         
-    print(f"Got {num_correct}/{num_pixels} with acc {whole_image_accuracy:.2f}")
+    # print(f"Got {num_correct}/{num_pixels} with acc {whole_image_accuracy:.2f}")
+    print(f"Dice score: {dice}")
     print(f"Pixel to Pixel Distance: {highest_probability_mse_total/len(loader)}")
     print(f"Angular Difference: {[total_diff_LDFA/len(loader), total_diff_MPTA/len(loader), total_diff_mHKA/len(loader)]}")
     model.train()
@@ -203,7 +240,6 @@ def train(
 
         if not args.no_image_save:
             save_predictions_as_images(args, val_loader, model, epoch, highest_probability_pixels_list, label_list_total, device=DEVICE)
-
         
         # if pth_save_point % 5 == 0: 
         #     torch.save(checkpoint, f"./results/UNet_Epoch_{epoch}.pth")
@@ -215,6 +251,8 @@ def train(
         if epoch == args.epochs - 1:
             torch.save(checkpoint, f'./plot_results/{args.wandb_name}/results/{args.wandb_name}.pth')
             box_plot(args, mse_list)
+            if args.no_image_save:
+                save_predictions_as_images(args, val_loader, model, epoch, highest_probability_pixels_list, label_list_total, device=DEVICE)
 
         if highest_probability_mse_total/len(val_loader) < best_rmse_mean:
             best_rmse_mean = highest_probability_mse_total/len(val_loader)

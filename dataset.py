@@ -254,13 +254,13 @@ def create_dataset(args):
                     # save the resized coordinates
                     tmp.append([round(y*resize_value), round(x*resize_value)])
 
-                if args.output_channel == 6:
+                if args.annotation_text_name == "annotation_label6.txt":
                     label_coordinate_list.append([
                         f'{image_num}_pad.png',num_of_pixels,
                         tmp[0][0], tmp[0][1], tmp[1][0], tmp[1][1], tmp[2][0], tmp[2][1],
                         tmp[3][0], tmp[3][1], tmp[4][0], tmp[4][1], tmp[5][0], tmp[5][1],
                     ])
-                elif args.output_channel == 8:
+                elif args.annotation_text_name == "annotation_label8.txt":
                     label_coordinate_list.append([
                         f'{image_num}_pad.png',num_of_pixels,
                         tmp[0][0], tmp[0][1], tmp[1][0], tmp[1][1], tmp[2][0], tmp[2][1],
@@ -268,12 +268,12 @@ def create_dataset(args):
                         tmp[6][0], tmp[6][1], tmp[7][0], tmp[7][1]
                     ])
 
-    if args.output_channel == 6:
+    if args.annotation_text_name == "annotation_label6.txt":
         fields = ['image','data',
                 'label_0_y', 'label_0_x', 'label_1_y', 'label_1_x', 'label_2_y', 'label_2_x',
                 'label_3_y', 'label_3_x', 'label_4_y', 'label_4_x', 'label_5_y', 'label_5_x',
         ]
-    elif args.output_channel == 8:
+    elif args.annotation_text_name == "annotation_label8.txt":
         fields = ['image','data',
                 'label_0_y', 'label_0_x', 'label_1_y', 'label_1_x', 'label_2_y', 'label_2_x',
                 'label_3_y', 'label_3_x', 'label_4_y', 'label_4_x', 'label_5_y', 'label_5_x',

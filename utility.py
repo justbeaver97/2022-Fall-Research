@@ -14,6 +14,22 @@ import numpy as np
 from sklearn.metrics import mean_squared_error as mse
 
 
+def compare_labels(preds, label, num_labels, num_labels_correct, predict_as_label, prediction_correct):
+    for i in range(len(preds[0][0])):
+        for j in range(len(preds[0][0][i])):
+            if float(label[0][0][i][j]) == 1.0:
+                num_labels += 1
+                if float(preds[0][0][i][j]) == 1.0:
+                    num_labels_correct += 1
+
+            if float(preds[0][0][i][j]) == 1.0:
+                predict_as_label += 1
+                if float(label[0][0][i][j]) == 1.0:
+                    prediction_correct += 1
+    
+    return num_labels, num_labels_correct, predict_as_label, prediction_correct
+
+
 def calculate_mse_predicted_to_annotation(args, highest_probability_pixels, label_list, idx, mse_list):
     highest_probability_pixels = torch.Tensor(np.array(highest_probability_pixels)).squeeze(0).reshape(args.output_channel*2,1)
     label_list = np.array(torch.Tensor(label_list), dtype=object).reshape(args.output_channel*2,1)
@@ -61,6 +77,8 @@ def create_directories(args, folder='./plot_results'):
             os.mkdir(f'./plot_results/{args.wandb_name}/label{i}')
     if not os.path.exists(f'./plot_results/{args.wandb_name}/results'):
         os.mkdir(f'./plot_results/{args.wandb_name}/results')
+    if not os.path.exists(f'./plot_results/{args.wandb_name}/angles'):
+        os.mkdir(f'./plot_results/{args.wandb_name}/angles')
 
 
 def calculate_number_of_dilated_pixel(k):
@@ -89,6 +107,7 @@ def innerProduct(v1, v2):
 
     # pi value
     return math.degrees(x)
+    
 
 def lateral_distal_femoral_angle(medial_femur, upper_implant_left, upper_implant_center):
     """
