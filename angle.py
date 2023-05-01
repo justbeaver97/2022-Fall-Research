@@ -7,7 +7,7 @@ from tqdm import tqdm
 from argument import arg_as_list
 from dataset import load_data
 from utility import extract_highest_probability_pixel, calculate_mse_predicted_to_annotation, calculate_angle
-from visualization import angle_visualization
+from visualization import angle_visualization, angle_graph
 
 
 def get_pretrained_model(args, DEVICE):
@@ -40,6 +40,7 @@ def main(args):
     _, val_loader = load_data(args)
 
     total_LDFA, total_MPTA, total_mHKA = 0, 0, 0 
+    angles = []
     for idx, (image, _, data_path, label_list) in enumerate(tqdm(val_loader)):
         # print(f"===== validation {idx} =====")
         image = image.to(device=DEVICE)
@@ -60,10 +61,11 @@ def main(args):
         total_MPTA += abs(MPTA-MPTA_GT)
         total_mHKA += abs(mHKA-mHKA_GT)
 
-        angles = [LDFA, MPTA, mHKA, LDFA_GT, MPTA_GT, mHKA_GT]
-        angle_visualization(args, experiment, data_path, idx, 300, index_list, label_list, 0, angles, "without label")
-        angle_visualization(args, experiment, data_path, idx, 300, index_list, label_list, 0, angles, "with label")
-
+        angles.append([LDFA, MPTA, mHKA, LDFA_GT, MPTA_GT, mHKA_GT])
+        angle_visualization(args, experiment, data_path, idx, 300, index_list, label_list, 0, angles[idx], "without label")
+        angle_visualization(args, experiment, data_path, idx, 300, index_list, label_list, 0, angles[idx], "with label")
+    
+    angle_graph(angles)
     print(f"Average Difference: {total_LDFA/len(val_loader):.2f}, {total_MPTA/len(val_loader):.2f}, {total_mHKA/len(val_loader):.2f}")
     
 

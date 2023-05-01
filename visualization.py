@@ -27,6 +27,10 @@ Reference:
         https://antilibrary.org/2705
     draw text in image:
         https://www.geeksforgeeks.org/python-pil-imagedraw-draw-text/
+    draw histogram using dataframe:
+        https://ordo.tistory.com/69
+    draw bland altman plot:
+        https://datainsider.tistory.com/54
 """
 
 import torch
@@ -35,6 +39,9 @@ import matplotlib.pyplot as plt
 import torchvision.transforms.functional as TF
 import numpy as np
 import cv2
+import pandas as pd
+import matplotlib.pyplot as plt  
+import statsmodels.api as sm
 
 from tqdm import tqdm
 from PIL import Image, ImageDraw, ImageFont
@@ -120,15 +127,15 @@ def save_predictions_as_images(args, loader, model, epoch, highest_probability_p
                         save_heatmap(preds, preds_binary, args, epoch)
                     
 
-def printsave(name, *a):
-    file = open(f'./plot_data/box_plot/txt_files/{name}.txt','a')
+def printsave(path, *a):
+    file = open(f'{path}.txt','a')
     print(*a,file=file)
 
 
 def box_plot(args, mse_list):
     ## I can't make box plot of 3 different methods 
     ## I have to just save it as a file, and then create it from saved text files
-    printsave(f'{args.wandb_name}_MSE_LIST', mse_list)
+    printsave(f./plot_data/rmse_box_plot/txt_files/'{args.wandb_name}_MSE_LIST', mse_list)
 
 
 def draw_line(draw, line_pixel, rgb, line_width, pixels):
@@ -210,6 +217,56 @@ def angle_visualization(
     draw = draw_text(draw, text_pixel, text, rgb, font)
 
     if method == "with label":
-        pixel_overlaid_image.save(f'./plot_results/{experiment}/angles/val{idx}_angle_with_label.png')
+        pixel_overlaid_image.save(f'../plot_results/{experiment}/angles/val{idx}_angle_with_label.png')
     elif method == "without label":
-        pixel_overlaid_image.save(f'./plot_results/{experiment}/angles/val{idx}_angle.png')
+        pixel_overlaid_image.save(f'../plot_results/{experiment}/angles/val{idx}_angle.png')
+
+
+def draw_histogram(angle_name, df):
+    title = angle_name.split("_")[0]
+
+    plt.hist(df[angle_name], rwidth=0.9)
+    plt.xlabel('Angle')
+    plt.ylabel('Count')
+    plt.title(f'Ground Truth {title}')
+
+    plt.savefig(f'./plot_data/angle/{title}_histogram.png')
+    plt.close()
+
+
+def draw_scatterplot(y_name, x_name, df):
+    x = np.linspace(min(df[x_name]),max(df[x_name]),100)
+    y = np.linspace(min(df[y_name]),max(df[y_name]),100)
+
+    plt.scatter(df[x_name], df[y_name], color='red', s=12)
+    plt.plot(x, y, color='blue', linewidth=2, linestyle='--')
+    plt.xlabel(f'Ground Truth {y_name}')
+    plt.ylabel(f'Predicted {y_name}')
+    plt.title(y_name)
+
+    plt.savefig(f'./plot_data/angle/{y_name}_scatter_pot.png')
+    plt.close()
+
+
+def draw_bland_altman(x_name, y_name, df):
+    f, ax = plt.subplots(1)
+    sm.graphics.mean_diff_plot(df[x_name], df[y_name], ax = ax)
+    plt.title(x_name)
+
+    plt.tight_layout()
+    plt.savefig(f'./plot_data/angle/{x_name}_bland_altman.png')
+    plt.close()
+
+
+def angle_graph(angles):
+    angle_list = ['LDFA', 'MPTA', 'mHKA', 'LDFA_GT', 'MPTA_GT', 'mHKA_GT']
+    for i in range(len(angles)):
+        for j in range(len(angles[i])):
+            if j != 2 and j != 5:
+                angles[i][j] = angles[i][j] - 90  
+    
+    df = pd.DataFrame(angles, columns=angle_list)
+    for i in range(int(len(angle_list)/2)):
+        draw_histogram(angle_list[i+3], df)
+        draw_scatterplot(angle_list[i], angle_list[i+3], df)
+        draw_bland_altman(angle_list[i], angle_list[i+3], df)
