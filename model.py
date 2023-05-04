@@ -7,6 +7,8 @@ reference:
     modifying model:
         https://discuss.pytorch.org/t/how-to-delete-layer-in-pretrained-model/17648/44
         https://sensibilityit.tistory.com/511
+    reverse list:
+        https://codetorial.net/tips_and_examples/reverse_python_list_or_numpy_array.html
 """
 
 import torch
@@ -81,6 +83,8 @@ class UNET(nn.Module):
 
 
 def get_model(args, DEVICE):
+    if args.decoder_channel[0] > args.decoder_channel[1]:
+        args.decoder_channel = args.decoder_channel[::-1]
     print("---------- Loading Not Pretrained Model ----------")
     model = UNET(
         in_channels  = 3, 
@@ -88,7 +92,6 @@ def get_model(args, DEVICE):
         features     = args.decoder_channel,
     ).to(DEVICE)
     print("---------- Not Pretrained Model Loaded ----------")
-    print(model)
     return model.to(DEVICE)
 
 
