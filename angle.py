@@ -47,8 +47,6 @@ def main(args):
 
         with torch.no_grad():
             preds = model(image)
-
-        mse_list = [[0]*len(val_loader) for _ in range(args.output_channel)]
         index_list = extract_highest_probability_pixel(args, preds)
         
         LDFA   , MPTA   , mHKA    = calculate_angle(args, index_list, "preds")
@@ -62,8 +60,8 @@ def main(args):
         total_mHKA += abs(mHKA-mHKA_GT)
 
         angles.append([LDFA, MPTA, mHKA, LDFA_GT, MPTA_GT, mHKA_GT])
-        angle_visualization(args, experiment, data_path, idx, 300, index_list, label_list, 0, angles[idx], "without label")
-        angle_visualization(args, experiment, data_path, idx, 300, index_list, label_list, 0, angles[idx], "with label")
+        # angle_visualization(args, experiment, data_path, idx, 300, index_list, label_list, 0, angles[idx], "without label")
+        # angle_visualization(args, experiment, data_path, idx, 300, index_list, label_list, 0, angles[idx], "with label")
     
     angle_graph(angles)
     print(f"Average Difference: {total_LDFA/len(val_loader):.2f}, {total_MPTA/len(val_loader):.2f}, {total_mHKA/len(val_loader):.2f}")

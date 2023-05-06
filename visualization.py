@@ -31,6 +31,8 @@ Reference:
         https://ordo.tistory.com/69
     draw bland altman plot:
         https://datainsider.tistory.com/54
+    calculate & visualize z-score:
+        https://blog.naver.com/PostView.naver?blogId=youji4ever&logNo=222891886830&categoryNo=0&parentCategoryNo=0&viewDate=&currentPage=1&postListTopCurrentPage=1&from=postView
 """
 
 import torch
@@ -42,6 +44,7 @@ import cv2
 import pandas as pd
 import matplotlib.pyplot as plt  
 import statsmodels.api as sm
+import seaborn as sns
 
 from tqdm import tqdm
 from PIL import Image, ImageDraw, ImageFont
@@ -135,7 +138,7 @@ def printsave(path, *a):
 def box_plot(args, mse_list):
     ## I can't make box plot of 3 different methods 
     ## I have to just save it as a file, and then create it from saved text files
-    printsave(f./plot_data/rmse_box_plot/txt_files/'{args.wandb_name}_MSE_LIST', mse_list)
+    printsave(f'./plot_data/rmse_box_plot/txt_files/{args.wandb_name}_MSE_LIST', mse_list)
 
 
 def draw_line(draw, line_pixel, rgb, line_width, pixels):
@@ -164,7 +167,7 @@ def angle_visualization(
         image_path = f'{args.padded_image}/{data_path[0]}'
         line_width, circle_size = 3, 5
 
-    pixel_overlaid_image = Image.open(image_path).resize((args.image_resize,args.image_resize)).convert("RGB")
+    angle_overlaid_image = Image.open(image_path).resize((args.image_resize,args.image_resize)).convert("RGB")
     LDFA_text = f'LDFA: {angles[0]:.2f}\nAnswer: {angles[3]:.2f}'
     MPTA_text = f'MPTA: {angles[1]:.2f}\nAnswer: {angles[4]:.2f}'
     mHKA_text = f'mHKA: {angles[2]:.2f}\nAnswer: {angles[5]:.2f}'
@@ -181,11 +184,11 @@ def angle_visualization(
         x, y = int(highest_probability_pixels_list[i][0][1]), int(highest_probability_pixels_list[i][0][0])
         pixels.append([x,y])
        
-        if count <= 2: pixel_overlaid_image = Image.fromarray(cv2.circle(np.array(pixel_overlaid_image), (x,y), circle_size, red,-1))
-        else:          pixel_overlaid_image = Image.fromarray(cv2.circle(np.array(pixel_overlaid_image), (x,y), circle_size, blue,-1))
+        if count <= 2: angle_overlaid_image = Image.fromarray(cv2.circle(np.array(angle_overlaid_image), (x,y), circle_size, red,-1))
+        else:          angle_overlaid_image = Image.fromarray(cv2.circle(np.array(angle_overlaid_image), (x,y), circle_size, blue,-1))
         count += 1
     
-    draw = ImageDraw.Draw(pixel_overlaid_image)
+    draw = ImageDraw.Draw(angle_overlaid_image)
     if args.output_channel == 6:
         line1 = ((pixels[0][0],pixels[0][1]),(pixels[2][0],pixels[2][1]))
         line2 = ((pixels[1][0],pixels[1][1]),(pixels[2][0],pixels[2][1]))
@@ -214,12 +217,16 @@ def angle_visualization(
         ]
 
     draw = draw_line(draw, line_pixel, rgb, line_width, pixels)
-    draw = draw_text(draw, text_pixel, text, rgb, font)
 
-    if method == "with label":
-        pixel_overlaid_image.save(f'../plot_results/{experiment}/angles/val{idx}_angle_with_label.png')
-    elif method == "without label":
-        pixel_overlaid_image.save(f'../plot_results/{experiment}/angles/val{idx}_angle.png')
+    if args.wandb_sweep:
+        return angle_overlaid_image
+    else:
+        draw = draw_text(draw, text_pixel, text, rgb, font)
+        if method == "with label":
+            angle_overlaid_image.save(f'./plot_results/{experiment}/angles/val{idx}_angle_with_label.png')
+        elif method == "without label":
+            angle_overlaid_image.save(f'./plot_results/{experiment}/angles/val{idx}_angle.png')
+        return angle_overlaid_image
 
 
 def draw_histogram(angle_name, df):
@@ -258,6 +265,21 @@ def draw_bland_altman(x_name, y_name, df):
     plt.close()
 
 
+def draw_z_score(angle_list, df):
+    df = df.assign(LDFA_z_score = lambda x: x.LDFA.sub(x.LDFA.mean()).div(x.LDFA.std()))
+    df = df.assign(MPTA_z_score = lambda x: x.MPTA.sub(x.MPTA.mean()).div(x.MPTA.std()))
+    df = df.assign(mHKA_z_score = lambda x: x.mHKA.sub(x.mHKA.mean()).div(x.mHKA.std()))
+
+    df = df.assign(LDFA_GT_z_score = lambda x: x.LDFA_GT.sub(x.LDFA_GT.mean()).div(x.LDFA_GT.std()))
+    df = df.assign(MPTA_GT_z_score = lambda x: x.MPTA_GT.sub(x.MPTA_GT.mean()).div(x.MPTA_GT.std()))
+    df = df.assign(mHKA_GT_z_score = lambda x: x.mHKA_GT.sub(x.mHKA_GT.mean()).div(x.mHKA_GT.std()))
+
+    for i in range(len(angle_list)):
+        sns.displot(df[f'{angle_list[i]}_z_score'])
+        plt.savefig(f'./plot_data/angle/{angle_list[i]}_z_score.png')
+        plt.close()
+
+
 def angle_graph(angles):
     angle_list = ['LDFA', 'MPTA', 'mHKA', 'LDFA_GT', 'MPTA_GT', 'mHKA_GT']
     for i in range(len(angles)):
@@ -270,3 +292,4 @@ def angle_graph(angles):
         draw_histogram(angle_list[i+3], df)
         draw_scatterplot(angle_list[i], angle_list[i+3], df)
         draw_bland_altman(angle_list[i], angle_list[i+3], df)
+    draw_z_score(angle_list, df)
