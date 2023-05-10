@@ -57,8 +57,8 @@ def extract_highest_probability_pixel(args, prediction_tensor):
 def create_directories(args, folder='./plot_results'):
     num_channels = args.output_channel
 
-    if not os.path.exists('./results'):
-        os.mkdir(f'./results')
+    # if not os.path.exists('./results'):
+    #     os.mkdir(f'./results')
     if not os.path.exists('./plot_data'):
         os.mkdir(f'./plot_data')
     if not os.path.exists(f'./{folder}'):

@@ -1,0 +1,49 @@
+command:
+  - python3
+  - main.py
+  - "--pixel_loss" 
+  - "--angle_loss" 
+  - "--progressive_erosion"
+  - "--progressive_weight" 
+  - "--pretrained" 
+  - "--wandb" 
+  - "--wandb_sweep"
+  - "--no_image_save" 
+  - "--dilate"
+  - "68"
+  - "--dilation_decrease" 
+  - "2" 
+  - "--dilation_epoch" 
+  - "10" 
+  - "--epochs" 
+  - "340" 
+  - "--output_channel" 
+  - "6"
+  - "--decoder_channel"
+  - "[512,256,128,64,32]"
+  
+project: joint-replacement
+entity: yehyun-suh
+
+method: bayes
+metric:
+  name: Best Angle Difference 
+  goal: minimize
+parameters:  
+  angle_loss_weight:
+    distribution: int_uniform
+    min: 1000
+    max: 1200
+  seed:
+    distribution: int_uniform
+    min: 2020
+    max: 2024
+  learning_rate:
+    distribution: uniform
+    min: 5e-5
+    max: 2e-4
+  batch_size:
+    distribution: categorical
+    values:
+      - 12
+      - 24
