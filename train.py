@@ -2,21 +2,19 @@
 reference:
     train process: 
         https://github.com/aladdinpersson/Machine-Learning-Collection
-    deepcopy:
-        https://freshrimpsushi.github.io/posts/hot-to-deepcopy-pytorch-tensor/
 """
 
 import torch
 import torch.nn as nn
 import numpy as np
-import copy 
+import wandb
 
 from tqdm import tqdm
 
 from spatial_mean import SpatialMean_CHAN
 from log import log_results, log_results_no_label
 from utility import create_directories, calculate_number_of_dilated_pixel, extract_highest_probability_pixel, calculate_mse_predicted_to_annotation, calculate_angle, compare_labels
-from visualization import save_predictions_as_images, box_plot
+from visualization import save_predictions_as_images, box_plot, angle_visualization
 from dataset import load_data
 
 
@@ -30,33 +28,13 @@ def train_function(args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, loss_fn
         data    = data.to(device=DEVICE)
         targets = targets.float().to(device=DEVICE)
 
-        # if args.pretrained:             
-            # if not args.no_sigmoid:
-                # model_no_sigmoid = copy.deepcopy(model)
-                # model_no_sigmoid.segmentation_head = nn.Sequential(
-                #     *list(model_no_sigmoid.segmentation_head.children())[:-1]
-                # )
-                # predictions_for_prob_pixel = model_no_sigmoid(data)
-            #     predictions =  torch.sigmoid(model(data))
-            # else:
-            #     predictions = model(data)
-        #     predictions =  torch.sigmoid(model(data))
-        #     if args.no_sigmoid:
-        #         predictions_for_prob_pixel = model(data)
-        #     else:
-        #         predictions_for_prob_pixel = torch.sigmoid(model(data))
-        # else:               
-        #     predictions = torch.sigmoid(model(data))
+        predictions =  model(data)
+
+        # predictions =  torch.sigmoid(model(data))
+        # if args.no_sigmoid:
         #     predictions_for_prob_pixel = model(data)
-
-            # if args.no_sigmoid:
-            #     predictions_for_prob_pixel = model(data)
-
-        predictions =  torch.sigmoid(model(data))
-        if args.no_sigmoid:
-            predictions_for_prob_pixel = model(data)
-        else:
-            predictions_for_prob_pixel = torch.sigmoid(model(data))
+        # else:
+        #     predictions_for_prob_pixel = torch.sigmoid(model(data))
         
         # calculate log loss with pixel value
         loss_pixel = loss_fn_pixel(predictions, targets)
@@ -68,17 +46,18 @@ def train_function(args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, loss_fn
         targets_spatial_mean          = targets_spatial_mean_function(targets)
         loss_geometry                 = loss_fn_geometry(predict_spatial_mean, targets_spatial_mean)
 
-        ## calculate the difference between GT angle and predicted angle
+        # # calculate the difference between GT angle and predicted angle
         # angle_pred, angle_gt = [], []
-        # for i in range(len(predictions)):
-        #     index_list = extract_highest_probability_pixel(args, predictions[i].unsqueeze(0))
+        # for i in range(len(predictions_for_prob_pixel)):
+        #     index_list = extract_highest_probability_pixel(args, predictions_for_prob_pixel[i].unsqueeze(0))
         #     angle_pred.append([calculate_angle(args, index_list, "preds")])
         #     angle_gt.append([calculate_angle(args, label_list, "label")])
         # loss_angle = loss_fn_angle(torch.Tensor(angle_pred), torch.Tensor(angle_gt))
 
+        # calculate the difference between GT angle and predicted angle
         angle_pred, angle_gt = [], []
-        for i in range(len(predictions_for_prob_pixel)):
-            index_list = extract_highest_probability_pixel(args, predictions_for_prob_pixel[i].unsqueeze(0))
+        for i in range(len(predictions)):
+            index_list = extract_highest_probability_pixel(args, predictions[i].unsqueeze(0))
             angle_pred.append([calculate_angle(args, index_list, "preds")])
             angle_gt.append([calculate_angle(args, label_list, "label")])
         loss_angle = loss_fn_angle(torch.Tensor(angle_pred), torch.Tensor(angle_gt))
@@ -91,7 +70,7 @@ def train_function(args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, loss_fn
         # if args.geom_loss:  
         #     loss = args.geom_loss_weight*loss_pixel + loss_geometry 
 
-        ## backward
+        # backward
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -121,8 +100,8 @@ def validate_function(loader, model, args, epoch, device):
     mse_list = [[0]*len(loader) for _ in range(args.output_channel)]
 
     with torch.no_grad():
-        label_list_total = []
-        for idx, (image, label, _, label_list) in enumerate(tqdm(loader)):
+        label_list_total, angles_total = [], []
+        for idx, (image, label, data_path, label_list) in enumerate(tqdm(loader)):
             image = image.to(device)
             label = label.to(device)
             label_list_total.append(label.detach().cpu().numpy())
@@ -145,6 +124,15 @@ def validate_function(loader, model, args, epoch, device):
             total_diff_LDFA += abs(LDFA_GT-LDFA)
             total_diff_MPTA += abs(MPTA_GT-MPTA)
             total_diff_mHKA += abs(mHKA_GT-mHKA)
+
+            angles_total.append([LDFA, MPTA, mHKA, LDFA_GT, MPTA_GT, mHKA_GT])
+            if idx == 0:
+                angle_overlaid_image_w_label = angle_visualization(
+                    args, args.wandb_name, data_path, idx, 300, index_list, label_list, 0, angles_total[idx], "without label"
+                )
+                angle_overlaid_image_wo_label = angle_visualization(
+                    args, args.wandb_name, data_path, idx, 300, index_list, label_list, 0, angles_total[idx], "with label"
+                )
 
             ## make predictions to be 0. or 1.
             preds = (preds > 0.5).float()
@@ -187,7 +175,7 @@ def validate_function(loader, model, args, epoch, device):
 
     evaluation_list = [label_accuracy, label_accuracy2, whole_image_accuracy, predict_as_label, dice]
     angle_list = [total_diff_LDFA, total_diff_MPTA, total_diff_mHKA]
-    return model, evaluation_list, highest_probability_pixels_list, highest_probability_mse_total, mse_list, label_list_total, angle_list
+    return model, evaluation_list, highest_probability_pixels_list, highest_probability_mse_total, mse_list, label_list_total, angle_list, angle_overlaid_image_w_label
 
 
 def train(
@@ -203,7 +191,6 @@ def train(
 
         if epoch % args.dilation_epoch == 0:
             if args.progressive_erosion:
-                ## TODO: Dilation cannot be 0
                 train_loader, val_loader = load_data(args)
                 if epoch != 0:
                     args.dilate = args.dilate - args.dilation_decrease
@@ -222,7 +209,7 @@ def train(
         loss, loss_pixel, loss_geometry, loss_angle = train_function(
             args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, loss_fn_angle, optimizer, train_loader
         )
-        model, evaluation_list, highest_probability_pixels_list, highest_probability_mse_total, mse_list, label_list_total, angle_list = validate_function(
+        model, evaluation_list, highest_probability_pixels_list, highest_probability_mse_total, mse_list, label_list_total, angle_list, angle_overlaid_image = validate_function(
             val_loader, model, args, epoch, device=DEVICE
         )
 
@@ -265,13 +252,14 @@ def train(
                 log_results(
                     args, loss, loss_pixel, loss_geometry, loss_angle, 
                     evaluation_list, angle_list, best_angle_mean, 
-                    highest_probability_mse_total, mse_list, best_rmse_mean, len(val_loader)
+                    highest_probability_mse_total, mse_list, best_rmse_mean, len(val_loader),
+                    wandb.Image(angle_overlaid_image),
                 )
             else:               
                 log_results_no_label(
                     args, loss, loss_pixel, loss_geometry, loss_angle, 
                     evaluation_list, angle_list, best_angle_mean, 
-                    highest_probability_mse_total, mse_list, best_rmse_mean, len(val_loader)
+                    highest_probability_mse_total, mse_list, best_rmse_mean, len(val_loader),
                 )
 
         if args.patience and count == args.patience_threshold:
