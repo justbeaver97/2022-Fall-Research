@@ -158,7 +158,7 @@ def draw_text(draw, text_pixel, text, rgb, font):
 
 
 def angle_visualization(
-        args, experiment, data_path, idx, epoch, highest_probability_pixels_list, label_list, i, angles, method
+        args, experiment, data_path, idx, epoch, highest_probability_pixels_list, label_list, i, angles, method, vis_type
     ):
     if method == "with label":
         image_path = f'{args.overlaid_padded_image}/{data_path[0]}'
@@ -223,9 +223,9 @@ def angle_visualization(
     else:
         draw = draw_text(draw, text_pixel, text, rgb, font)
         if method == "with label":
-            angle_overlaid_image.save(f'./plot_results/{experiment}/angles/val{idx}_angle_with_label.png')
+            angle_overlaid_image.save(f'./plot_results/{experiment}/angles/{vis_type}{idx}_angle_with_label.png')
         elif method == "without label":
-            angle_overlaid_image.save(f'./plot_results/{experiment}/angles/val{idx}_angle.png')
+            angle_overlaid_image.save(f'./plot_results/{experiment}/angles/{vis_type}{idx}_angle.png')
         return angle_overlaid_image
 
 
@@ -266,13 +266,21 @@ def draw_bland_altman(x_name, y_name, df):
 
 
 def draw_z_score(angle_list, df):
-    df = df.assign(LDFA_z_score = lambda x: x.LDFA.sub(x.LDFA.mean()).div(x.LDFA.std()))
-    df = df.assign(MPTA_z_score = lambda x: x.MPTA.sub(x.MPTA.mean()).div(x.MPTA.std()))
-    df = df.assign(mHKA_z_score = lambda x: x.mHKA.sub(x.mHKA.mean()).div(x.mHKA.std()))
+    # df = df.assign(LDFA_z_score = lambda x: x.LDFA.sub(x.LDFA.mean()).div(x.LDFA.std()))
+    # df = df.assign(MPTA_z_score = lambda x: x.MPTA.sub(x.MPTA.mean()).div(x.MPTA.std()))
+    # df = df.assign(mHKA_z_score = lambda x: x.mHKA.sub(x.mHKA.mean()).div(x.mHKA.std()))
 
-    df = df.assign(LDFA_GT_z_score = lambda x: x.LDFA_GT.sub(x.LDFA_GT.mean()).div(x.LDFA_GT.std()))
-    df = df.assign(MPTA_GT_z_score = lambda x: x.MPTA_GT.sub(x.MPTA_GT.mean()).div(x.MPTA_GT.std()))
-    df = df.assign(mHKA_GT_z_score = lambda x: x.mHKA_GT.sub(x.mHKA_GT.mean()).div(x.mHKA_GT.std()))
+    # df = df.assign(LDFA_GT_z_score = lambda x: x.LDFA_GT.sub(x.LDFA_GT.mean()).div(x.LDFA_GT.std()))
+    # df = df.assign(MPTA_GT_z_score = lambda x: x.MPTA_GT.sub(x.MPTA_GT.mean()).div(x.MPTA_GT.std()))
+    # df = df.assign(mHKA_GT_z_score = lambda x: x.mHKA_GT.sub(x.mHKA_GT.mean()).div(x.mHKA_GT.std()))
+
+    df = df.assign(LDFA_z_score = lambda x: x.dFA.sub(x.dFA.mean()).div(x.dFA.std()))
+    df = df.assign(MPTA_z_score = lambda x: x.pTA.sub(x.pTA.mean()).div(x.pTA.std()))
+    df = df.assign(mHKA_z_score = lambda x: x.FTA.sub(x.FTA.mean()).div(x.FTA.std()))
+
+    df = df.assign(LDFA_GT_z_score = lambda x: x.dFA_GT.sub(x.dFA_GT.mean()).div(x.dFA_GT.std()))
+    df = df.assign(MPTA_GT_z_score = lambda x: x.pTA_GT.sub(x.pTA_GT.mean()).div(x.pTA_GT.std()))
+    df = df.assign(mHKA_GT_z_score = lambda x: x.FTA_GT.sub(x.FTA_GT.mean()).div(x.FTA_GT.std()))
 
     for i in range(len(angle_list)):
         sns.displot(df[f'{angle_list[i]}_z_score'])
@@ -281,7 +289,8 @@ def draw_z_score(angle_list, df):
 
 
 def angle_graph(angles):
-    angle_list = ['LDFA', 'MPTA', 'mHKA', 'LDFA_GT', 'MPTA_GT', 'mHKA_GT']
+    # angle_list = ['LDFA', 'MPTA', 'mHKA', 'LDFA_GT', 'MPTA_GT', 'mHKA_GT']
+    angle_list = ['dFA', 'pTA', 'FTA', 'dFA_GT', 'pTA_GT', 'FTA_GT']
     for i in range(len(angles)):
         for j in range(len(angles[i])):
             if j != 2 and j != 5:

@@ -47,7 +47,7 @@ def main(args):
 
     ## load data into a form that can be fed into the model
     if not args.progressive_erosion:
-        train_loader, val_loader = load_data(args)
+        train_loader, val_loader, _ = load_data(args)
     else:
         train_loader, val_loader = 0, 0
     DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
@@ -116,9 +116,11 @@ if __name__ == '__main__':
 
     ## hyperparameters - data
     parser.add_argument('--dataset_path', type=str, default="./data/dataset", help='dataset path')
-    parser.add_argument('--dataset_csv_path', type=str, default="./xlsx/dataset.csv", help='dataset excel file path')
+    parser.add_argument('--dataset_csv_path', type=str, default="./xlsx/train_dataset.csv", help='dataset excel file path')
+    parser.add_argument('--test_dataset_csv_path', type=str, default="./xlsx/test_dataset.csv", help='dataset excel file path')
     parser.add_argument('--annotation_text_path', type=str, default="./data/annotation_text_files", help='annotation text file path')
     parser.add_argument('--annotation_text_name', type=str, default="annotation_label8.txt", help='annotation text file name')
+    parser.add_argument('--test_annotation_text_name', type=str, default="annotation_label6_test.txt", help='annotation text file name')
     parser.add_argument('--dataset_split', type=int, default=9, help='dataset split ratio')
     parser.add_argument('--dilate', type=int, default=2, help='dilate iteration')
     parser.add_argument('--dilation_decrease', type=int, default=5, help='dilation decrease in progressive erosion')

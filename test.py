@@ -37,8 +37,8 @@ def main(args):
 
     model = get_pretrained_model(args, DEVICE)
 
-    # experiment = 'Label6_D68-2_to2_AW-P1000+A_every10_chx2'
-    experiment = args.wandb_name
+    experiment = 'Label6_D68-2_to2_AW-P1000+A_every10_chx2'
+    # experiment = args.wandb_name
     print(experiment)
     path = f'./plot_results/{experiment}/results/{experiment}_best.pth'
     checkpoint = torch.load(path)
@@ -46,36 +46,14 @@ def main(args):
     model.load_state_dict(checkpoint['state_dict'])
     model.eval()
 
-    _, val_loader, test_loader = load_data(args)
+    _, val_loader = load_data(args)
 
     total_LDFA, total_MPTA, total_mHKA = 0, 0, 0
     LDFA_list, MPTA_list, mHKA_list = [], [], []
     predict_list = []
     angles = []
-    # for idx, (image, _, data_path, label_list) in enumerate(tqdm(test_loader)):
-    #     # print(f"===== validation {idx} =====")
-    #     image = image.to(device=DEVICE)
-
-    #     with torch.no_grad():
-    #         preds = model(image)
-    #     index_list = extract_highest_probability_pixel(args, preds)
-        
-    #     LDFA   , MPTA   , mHKA    = calculate_angle(args, index_list, "preds")
-    #     LDFA_GT, MPTA_GT, mHKA_GT = calculate_angle(args, label_list, "label")
-    #     # print(f"LDFA   , MPTA   , mHKA   : {LDFA:.2f}, {MPTA:.2f}, {mHKA:.2f}")
-    #     # print(f"LDFA_GT, MPTA_GT, mHKA_GT: {LDFA_GT:.2f}, {MPTA_GT:.2f}, {mHKA_GT:.2f}")
-    #     # print(f"Difference: {LDFA-LDFA_GT:.2f}, {MPTA-MPTA_GT:.2f}, {mHKA-mHKA_GT:.2f}")
-        
-    #     total_LDFA += abs(LDFA-LDFA_GT)
-    #     total_MPTA += abs(MPTA-MPTA_GT)
-    #     total_mHKA += abs(mHKA-mHKA_GT)
-
-    #     angles.append([LDFA, MPTA, mHKA, LDFA_GT, MPTA_GT, mHKA_GT])
-    #     # angle_visualization(args, experiment, data_path, idx, 300, index_list, label_list, 0, angles[idx], "without label")
-    #     # angle_visualization(args, experiment, data_path, idx, 300, index_list, label_list, 0, angles[idx], "with label")
-    
-    for idx, (image, _, data_path, label_list) in enumerate(tqdm(test_loader)):
-        # print(f"===== test {idx} =====")
+    for idx, (image, _, data_path, label_list) in enumerate(tqdm(val_loader)):
+        # print(f"===== validation {idx} =====")
         image = image.to(device=DEVICE)
 
         with torch.no_grad():
@@ -93,96 +71,119 @@ def main(args):
         total_mHKA += abs(mHKA-mHKA_GT)
 
         angles.append([LDFA, MPTA, mHKA, LDFA_GT, MPTA_GT, mHKA_GT])
-        LDFA_list.append(LDFA)
-        MPTA_list.append(MPTA)
-        mHKA_list.append(mHKA)
+        # angle_visualization(args, experiment, data_path, idx, 300, index_list, label_list, 0, angles[idx], "without label")
+        # angle_visualization(args, experiment, data_path, idx, 300, index_list, label_list, 0, angles[idx], "with label")
+    angle_graph(angles)
 
-        predict_list.append(LDFA)
-        predict_list.append(MPTA)
-        predict_list.append(mHKA)
+    # for idx, (image, _, data_path, label_list) in enumerate(tqdm(test_loader)):
+    #     # print(f"===== test {idx} =====")
+    #     image = image.to(device=DEVICE)
 
-        # angle_visualization(args, experiment, data_path, idx, 300, index_list, label_list, 0, angles[idx], "without label", "test")
-        # angle_visualization(args, experiment, data_path, idx, 300, index_list, label_list, 0, angles[idx], "with label", "test")
-    # angle_graph(angles)
-    print(f"Average Difference: {total_LDFA/len(test_loader):.2f}, {total_MPTA/len(test_loader):.2f}, {total_mHKA/len(test_loader):.2f}")
-    print(f"Average Total: {(total_LDFA+total_MPTA+total_mHKA)/(len(test_loader)*3)}\n\n")
+    #     with torch.no_grad():
+    #         preds = model(image)
+    #     index_list = extract_highest_probability_pixel(args, preds)
+        
+    #     LDFA   , MPTA   , mHKA    = calculate_angle(args, index_list, "preds")
+    #     LDFA_GT, MPTA_GT, mHKA_GT = calculate_angle(args, label_list, "label")
+    #     # print(f"LDFA   , MPTA   , mHKA   : {LDFA:.2f}, {MPTA:.2f}, {mHKA:.2f}")
+    #     # print(f"LDFA_GT, MPTA_GT, mHKA_GT: {LDFA_GT:.2f}, {MPTA_GT:.2f}, {mHKA_GT:.2f}")
+    #     # print(f"Difference: {LDFA-LDFA_GT:.2f}, {MPTA-MPTA_GT:.2f}, {mHKA-mHKA_GT:.2f}")
+        
+    #     total_LDFA += abs(LDFA-LDFA_GT)
+    #     total_MPTA += abs(MPTA-MPTA_GT)
+    #     total_mHKA += abs(mHKA-mHKA_GT)
 
-    """
-    1) t-test (two sample unpooled) between Single Pixel Segmentation errors(!) and your 
-    final model errors. This value will be absurdly low, so please express it scientific 
-    notation i.e. p<1e-15.
-    plot_results/J_D0/results/J_D0_best.pth
-    plot_results/j_Label6_D65-10_to5_AW_every50/results/j_Label6_D65-10_to5_AW_every50_best.pth
+    #     angles.append([LDFA, MPTA, mHKA, LDFA_GT, MPTA_GT, mHKA_GT])
+    #     LDFA_list.append(LDFA)
+    #     MPTA_list.append(MPTA)
+    #     mHKA_list.append(mHKA)
+
+    #     predict_list.append(LDFA)
+    #     predict_list.append(MPTA)
+    #     predict_list.append(mHKA)
+
+    #     # angle_visualization(args, experiment, data_path, idx, 300, index_list, label_list, 0, angles[idx], "without label", "test")
+    #     # angle_visualization(args, experiment, data_path, idx, 300, index_list, label_list, 0, angles[idx], "with label", "test")
+    # # angle_graph(angles)
+    # print(f"Average Difference: {total_LDFA/len(test_loader):.2f}, {total_MPTA/len(test_loader):.2f}, {total_mHKA/len(test_loader):.2f}")
+    # print(f"Average Total: {(total_LDFA+total_MPTA+total_mHKA)/(len(test_loader)*3)}\n\n")
+
+    # """
+    # 1) t-test (two sample unpooled) between Single Pixel Segmentation errors(!) and your 
+    # final model errors. This value will be absurdly low, so please express it scientific 
+    # notation i.e. p<1e-15.
+    # plot_results/J_D0/results/J_D0_best.pth
+    # plot_results/j_Label6_D65-10_to5_AW_every50/results/j_Label6_D65-10_to5_AW_every50_best.pth
    
-    2) Same t-test, between just the dilation version of your final model (Dilation 60) and 
-    your actual final model.
-    plot_results/J_D60/results/J_D60_best.pth
+    # 2) Same t-test, between just the dilation version of your final model (Dilation 60) and 
+    # your actual final model.
+    # plot_results/J_D60/results/J_D60_best.pth
     
-    3) Same t-test, between the Dilation + Adaptive weighting (Dilation 60 + Adapt W) and 
-    your actual model.
-    plot_results/J_D60_AW/results/J_D60_AW_best.pth
-    """
+    # 3) Same t-test, between the Dilation + Adaptive weighting (Dilation 60 + Adapt W) and 
+    # your actual model.
+    # plot_results/J_D60_AW/results/J_D60_AW_best.pth
+    # """
 
-    args.decoder_channel = [512,256,128,64,32]
-    model_paired = get_pretrained_model(args, DEVICE)
+    # args.decoder_channel = [512,256,128,64,32]
+    # model_paired = get_pretrained_model(args, DEVICE)
 
-    experiment = 'J_Label6_D68-2_to2_AW-P1000+A_every10_chx2'
-    # experiment = 'Label6_D68-2_to2_AW-P1000+A_every10_chx2'
-    # experiment = 'j_Label6_D65-10_to5_AW_every50'
-    print(experiment)
-    path = f'./plot_results/{experiment}/results/{experiment}_best.pth'
-    checkpoint = torch.load(path)
+    # experiment = 'J_Label6_D68-2_to2_AW-P1000+A_every10_chx2'
+    # # experiment = 'Label6_D68-2_to2_AW-P1000+A_every10_chx2'
+    # # experiment = 'j_Label6_D65-10_to5_AW_every50'
+    # print(experiment)
+    # path = f'./plot_results/{experiment}/results/{experiment}_best.pth'
+    # checkpoint = torch.load(path)
 
-    model_paired.load_state_dict(checkpoint['state_dict'])
-    model_paired.eval()
+    # model_paired.load_state_dict(checkpoint['state_dict'])
+    # model_paired.eval()
 
-    total_LDFA_paired, total_MPTA_paired, total_mHKA_paired = 0, 0, 0 
-    LDFA_list_paired, MPTA_list_paired, mHKA_list_paired = [], [], []
-    predict_list_paired = []
-    angles_paired = []
-    for idx, (image, _, data_path, label_list) in enumerate(tqdm(test_loader)):
-        # print(f"===== test {idx} =====")
-        image = image.to(device=DEVICE)
+    # total_LDFA_paired, total_MPTA_paired, total_mHKA_paired = 0, 0, 0 
+    # LDFA_list_paired, MPTA_list_paired, mHKA_list_paired = [], [], []
+    # predict_list_paired = []
+    # angles_paired = []
+    # for idx, (image, _, data_path, label_list) in enumerate(tqdm(test_loader)):
+    #     # print(f"===== test {idx} =====")
+    #     image = image.to(device=DEVICE)
 
-        with torch.no_grad():
-            preds = model_paired(image)
-        index_list = extract_highest_probability_pixel(args, preds)
+    #     with torch.no_grad():
+    #         preds = model_paired(image)
+    #     index_list = extract_highest_probability_pixel(args, preds)
         
-        LDFA   , MPTA   , mHKA    = calculate_angle(args, index_list, "preds")
-        LDFA_GT, MPTA_GT, mHKA_GT = calculate_angle(args, label_list, "label")
-        # print(f"LDFA   , MPTA   , mHKA   : {LDFA:.2f}, {MPTA:.2f}, {mHKA:.2f}")
-        # print(f"LDFA_GT, MPTA_GT, mHKA_GT: {LDFA_GT:.2f}, {MPTA_GT:.2f}, {mHKA_GT:.2f}")
-        # print(f"Difference: {LDFA-LDFA_GT:.2f}, {MPTA-MPTA_GT:.2f}, {mHKA-mHKA_GT:.2f}")
+    #     LDFA   , MPTA   , mHKA    = calculate_angle(args, index_list, "preds")
+    #     LDFA_GT, MPTA_GT, mHKA_GT = calculate_angle(args, label_list, "label")
+    #     # print(f"LDFA   , MPTA   , mHKA   : {LDFA:.2f}, {MPTA:.2f}, {mHKA:.2f}")
+    #     # print(f"LDFA_GT, MPTA_GT, mHKA_GT: {LDFA_GT:.2f}, {MPTA_GT:.2f}, {mHKA_GT:.2f}")
+    #     # print(f"Difference: {LDFA-LDFA_GT:.2f}, {MPTA-MPTA_GT:.2f}, {mHKA-mHKA_GT:.2f}")
         
-        total_LDFA_paired += abs(LDFA-LDFA_GT)
-        total_MPTA_paired += abs(MPTA-MPTA_GT)
-        total_mHKA_paired += abs(mHKA-mHKA_GT)
+    #     total_LDFA_paired += abs(LDFA-LDFA_GT)
+    #     total_MPTA_paired += abs(MPTA-MPTA_GT)
+    #     total_mHKA_paired += abs(mHKA-mHKA_GT)
 
-        angles_paired.append([LDFA, MPTA, mHKA, LDFA_GT, MPTA_GT, mHKA_GT])
-        LDFA_list_paired.append(LDFA)
-        MPTA_list_paired.append(MPTA)
-        mHKA_list_paired.append(mHKA)
+    #     angles_paired.append([LDFA, MPTA, mHKA, LDFA_GT, MPTA_GT, mHKA_GT])
+    #     LDFA_list_paired.append(LDFA)
+    #     MPTA_list_paired.append(MPTA)
+    #     mHKA_list_paired.append(mHKA)
 
-        predict_list_paired.append(LDFA)
-        predict_list_paired.append(MPTA)
-        predict_list_paired.append(mHKA)
+    #     predict_list_paired.append(LDFA)
+    #     predict_list_paired.append(MPTA)
+    #     predict_list_paired.append(mHKA)
 
-        # angle_visualization(args, experiment, data_path, idx, 300, index_list, label_list, 0, angles[idx], "without label", "test")
-        # angle_visualization(args, experiment, data_path, idx, 300, index_list, label_list, 0, angles[idx], "with label", "test")
-    # angle_graph(angles)
-    print(f"Average Difference: {total_LDFA_paired/len(test_loader):.2f}, {total_MPTA_paired/len(test_loader):.2f}, {total_mHKA_paired/len(test_loader):.2f}")
-    print(f"Average Total: {(total_LDFA_paired+total_MPTA_paired+total_mHKA_paired)/(len(test_loader)*3)}\n\n")
+    #     # angle_visualization(args, experiment, data_path, idx, 300, index_list, label_list, 0, angles[idx], "without label", "test")
+    #     # angle_visualization(args, experiment, data_path, idx, 300, index_list, label_list, 0, angles[idx], "with label", "test")
+    # # angle_graph(angles)
+    # print(f"Average Difference: {total_LDFA_paired/len(test_loader):.2f}, {total_MPTA_paired/len(test_loader):.2f}, {total_mHKA_paired/len(test_loader):.2f}")
+    # print(f"Average Total: {(total_LDFA_paired+total_MPTA_paired+total_mHKA_paired)/(len(test_loader)*3)}\n\n")
 
-    LDFA_t_test = scipy.stats.ttest_ind(LDFA_list, LDFA_list_paired, equal_var=False)
-    MPTA_t_test = scipy.stats.ttest_ind(MPTA_list, MPTA_list_paired, equal_var=False)
-    mHKA_t_test = scipy.stats.ttest_ind(mHKA_list, mHKA_list_paired, equal_var=False)
-    pred_t_test = scipy.stats.ttest_ind(predict_list, predict_list_paired, equal_var=False)
+    # LDFA_t_test = scipy.stats.ttest_ind(LDFA_list, LDFA_list_paired, equal_var=False)
+    # MPTA_t_test = scipy.stats.ttest_ind(MPTA_list, MPTA_list_paired, equal_var=False)
+    # mHKA_t_test = scipy.stats.ttest_ind(mHKA_list, mHKA_list_paired, equal_var=False)
+    # pred_t_test = scipy.stats.ttest_ind(predict_list, predict_list_paired, equal_var=False)
 
-    print("LDFA :",LDFA_t_test)
-    print("MPTA :",MPTA_t_test)
-    print("mHKA :",mHKA_t_test)
-    print("Prediction :",pred_t_test)
-    print("\n\n==========================\n\n")
+    # print("LDFA :",LDFA_t_test)
+    # print("MPTA :",MPTA_t_test)
+    # print("mHKA :",mHKA_t_test)
+    # print("Prediction :",pred_t_test)
+    # print("\n\n==========================\n\n")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -225,7 +226,7 @@ if __name__ == '__main__':
     parser.add_argument('--dataset_csv_path', type=str, default="./xlsx/train_dataset.csv", help='dataset excel file path')
     parser.add_argument('--test_dataset_csv_path', type=str, default="./xlsx/test_dataset.csv", help='dataset excel file path')
     parser.add_argument('--annotation_text_path', type=str, default="./data/annotation_text_files", help='annotation text file path')
-    parser.add_argument('--annotation_text_name', type=str, default="annotation_label6.txt", help='annotation text file name')
+    parser.add_argument('--annotation_text_name', type=str, default="annotation_label8.txt", help='annotation text file name')
     parser.add_argument('--test_annotation_text_name', type=str, default="annotation_label6_test.txt", help='annotation text file name')
     parser.add_argument('--dataset_split', type=int, default=9, help='dataset split ratio')
     parser.add_argument('--dilate', type=int, default=2, help='dilate iteration')

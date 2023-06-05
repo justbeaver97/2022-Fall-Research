@@ -191,7 +191,7 @@ def train(
 
         if epoch % args.dilation_epoch == 0:
             if args.progressive_erosion:
-                train_loader, val_loader = load_data(args)
+                train_loader, val_loader, _ = load_data(args)
                 if epoch != 0:
                     args.dilate = args.dilate - args.dilation_decrease
                 if args.dilate < 1:

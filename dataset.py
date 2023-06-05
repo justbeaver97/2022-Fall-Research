@@ -48,12 +48,23 @@ class CustomDataset(Dataset):
         image = np.array(Image.open(image_path).convert("RGB"))
 
         if self.args.output_channel == 6:
+            # label_0_y, label_0_x = self.df['label_0_y'][idx], self.df['label_0_x'][idx]
+            # label_1_y, label_1_x = self.df['label_1_y'][idx], self.df['label_1_x'][idx]
+            # label_2_y, label_2_x = self.df['label_3_y'][idx], self.df['label_3_x'][idx]
+            # label_3_y, label_3_x = self.df['label_4_y'][idx], self.df['label_4_x'][idx]
+            # label_4_y, label_4_x = self.df['label_6_y'][idx], self.df['label_6_x'][idx]
+            # label_5_y, label_5_x = self.df['label_7_y'][idx], self.df['label_7_x'][idx]
+            # label_list = [
+            #     label_0_y, label_0_x, label_1_y, label_1_x, label_2_y, label_2_x,
+            #     label_3_y, label_3_x, label_4_y, label_4_x, label_5_y, label_5_x,
+            # ]
+
             label_0_y, label_0_x = self.df['label_0_y'][idx], self.df['label_0_x'][idx]
             label_1_y, label_1_x = self.df['label_1_y'][idx], self.df['label_1_x'][idx]
-            label_2_y, label_2_x = self.df['label_3_y'][idx], self.df['label_3_x'][idx]
-            label_3_y, label_3_x = self.df['label_4_y'][idx], self.df['label_4_x'][idx]
-            label_4_y, label_4_x = self.df['label_6_y'][idx], self.df['label_6_x'][idx]
-            label_5_y, label_5_x = self.df['label_7_y'][idx], self.df['label_7_x'][idx]
+            label_2_y, label_2_x = self.df['label_2_y'][idx], self.df['label_2_x'][idx]
+            label_3_y, label_3_x = self.df['label_3_y'][idx], self.df['label_3_x'][idx]
+            label_4_y, label_4_x = self.df['label_4_y'][idx], self.df['label_4_x'][idx]
+            label_5_y, label_5_x = self.df['label_5_y'][idx], self.df['label_5_x'][idx]
             label_list = [
                 label_0_y, label_0_x, label_1_y, label_1_x, label_2_y, label_2_x,
                 label_3_y, label_3_x, label_4_y, label_4_x, label_5_y, label_5_x,
@@ -143,6 +154,8 @@ class CustomDataset(Dataset):
 
 
 def dilate_pixel(mask, label_y, label_x, args):
+    if label_y == 512: label_y -= 1
+    if label_x == 512: label_x -= 1
     mask[label_y][label_x] = 1.0
     struct = ndimage.generate_binary_structure(2, 1)
     dilated_mask = ndimage.binary_dilation(mask, structure=struct, iterations=args.dilate).astype(mask.dtype)
@@ -155,10 +168,12 @@ def load_data(args):
     IMAGE_RESIZE = args.image_resize
     BATCH_SIZE = args.batch_size
 
-    dataset_df = pd.read_csv(args.dataset_csv_path)
-    split_point = int((len(dataset_df)*args.dataset_split)/10)
-    train_df = dataset_df[:split_point]
-    val_df = dataset_df[split_point:]
+    train_val_df = pd.read_csv(args.dataset_csv_path)
+    split_point = int((len(train_val_df)*args.dataset_split)/10)
+
+    train_df = train_val_df[:split_point]
+    val_df = train_val_df[split_point:]
+    test_df = pd.read_csv(args.test_dataset_csv_path)
 
     if args.augmentation:
         train_transform = A.Compose([
@@ -208,8 +223,12 @@ def load_data(args):
     val_dataset = CustomDataset(
         val_df, args, val_transform
     )
+    test_dataset = CustomDataset(
+        test_df, args, val_transform
+    )
     print('len of train dataset: ', len(train_dataset))
     print('len of val dataset: ', len(val_dataset))
+    print('len of test dataset: ', len(test_dataset))
 
     num_workers = 4 * torch.cuda.device_count()
     train_loader = DataLoader(
@@ -218,23 +237,16 @@ def load_data(args):
     val_loader = DataLoader(
         val_dataset, shuffle=False, batch_size=1, num_workers=num_workers
     )
+    test_loader = DataLoader(
+        test_dataset, shuffle=False, batch_size=1, num_workers=num_workers
+    )
 
     print("---------- Loading Dataset Done ----------")
 
-    return train_loader, val_loader
+    return train_loader, val_loader, test_loader
 
 
-def create_dataset(args):
-    """
-    Annotation Dataset Approach 2
-    After getting the annotation points from original image as text file, 
-    create a csv file that resizes the values into resized image size
-    """
-    print("---------- Starting Creating Dataset ----------")
-
-    annotation_file = f'{args.annotation_text_path}/{args.annotation_text_name}'
-    num_of_labels = 8
-    
+def text_to_csv(args, annotation_file, file_type):    
     label_coordinate_list = []
     with open(annotation_file, 'r') as f:
         for line in tqdm(f):
@@ -247,43 +259,120 @@ def create_dataset(args):
                 resize_value = args.image_resize / image.shape[0]
                 tmp = []
 
-                for i in range(num_of_labels):
+                for i in range(args.output_channel):
                     y = int(line.strip().split(',')[(2*i)+2])
                     x = int(line.strip().split(',')[(2*i)+3])
 
                     # save the resized coordinates
                     tmp.append([round(y*resize_value), round(x*resize_value)])
 
-                if args.annotation_text_name == "annotation_label6.txt":
+                # if args.annotation_text_name == "annotation_label6.txt":
+                if args.output_channel == 6:
                     label_coordinate_list.append([
-                        f'{image_num}_pad.png',num_of_pixels,
+                        # f'{image_num}_pad.png',num_of_pixels,
+                        image_name,num_of_pixels,
                         tmp[0][0], tmp[0][1], tmp[1][0], tmp[1][1], tmp[2][0], tmp[2][1],
                         tmp[3][0], tmp[3][1], tmp[4][0], tmp[4][1], tmp[5][0], tmp[5][1],
                     ])
-                elif args.annotation_text_name == "annotation_label8.txt":
+                # elif args.annotation_text_name == "annotation_label8.txt":
+                else:
                     label_coordinate_list.append([
-                        f'{image_num}_pad.png',num_of_pixels,
+                        # f'{image_num}_pad.png',num_of_pixels,
+                        image_name,num_of_pixels,
                         tmp[0][0], tmp[0][1], tmp[1][0], tmp[1][1], tmp[2][0], tmp[2][1],
                         tmp[3][0], tmp[3][1], tmp[4][0], tmp[4][1], tmp[5][0], tmp[5][1],
                         tmp[6][0], tmp[6][1], tmp[7][0], tmp[7][1]
                     ])
 
-    if args.annotation_text_name == "annotation_label6.txt":
+    # if args.annotation_text_name == "annotation_label6.txt":
+    if args.output_channel == 6:
         fields = ['image','data',
                 'label_0_y', 'label_0_x', 'label_1_y', 'label_1_x', 'label_2_y', 'label_2_x',
                 'label_3_y', 'label_3_x', 'label_4_y', 'label_4_x', 'label_5_y', 'label_5_x',
         ]
-    elif args.annotation_text_name == "annotation_label8.txt":
+    # elif args.annotation_text_name == "annotation_label8.txt":
+    else:
         fields = ['image','data',
                 'label_0_y', 'label_0_x', 'label_1_y', 'label_1_x', 'label_2_y', 'label_2_x',
                 'label_3_y', 'label_3_x', 'label_4_y', 'label_4_x', 'label_5_y', 'label_5_x',
                 'label_6_y', 'label_6_x', 'label_7_y', 'label_7_x'
         ]
     
+    if file_type == "train":
+        with open(f'{args.dataset_csv_path}', 'w', newline='') as f:
+            write = csv.writer(f)
+            write.writerow(fields)
+            write.writerows(label_coordinate_list)
+    else:
+        with open(f'{args.test_dataset_csv_path}', 'w', newline='') as f:
+            write = csv.writer(f)
+            write.writerow(fields)
+            write.writerows(label_coordinate_list)
 
-    with open(f'{args.dataset_csv_path}', 'w', newline='') as f:
-        write = csv.writer(f)
-        write.writerow(fields)
-        write.writerows(label_coordinate_list)
+
+def create_dataset(args):
+    """
+    Annotation Dataset Approach 2
+    After getting the annotation points from original image as text file, 
+    create a csv file that resizes the values into resized image size
+    """
+    print("---------- Starting Creating Dataset ----------")
+
+    annotation_file = f'{args.annotation_text_path}/{args.annotation_text_name}'
+    annotation_file_test = f'{args.annotation_text_path}/{args.test_annotation_text_name}'
+
+    text_to_csv(args, annotation_file, "train")
+    text_to_csv(args, annotation_file_test, "test")
+    
+    # label_coordinate_list = []
+    # with open(annotation_file, 'r') as f:
+    #     for line in tqdm(f):
+    #         if line.strip().split(',')[1] != '0':
+    #             image_name = line.strip().split(',')[0]
+    #             image_num = line.strip().split(',')[0].split('_')[0]
+    #             num_of_pixels = int(line.strip().split(',')[1])
+
+    #             image = cv2.imread(f'{args.padded_image}/{image_name}')
+    #             resize_value = args.image_resize / image.shape[0]
+    #             tmp = []
+
+    #             for i in range(num_of_labels):
+    #                 y = int(line.strip().split(',')[(2*i)+2])
+    #                 x = int(line.strip().split(',')[(2*i)+3])
+
+    #                 # save the resized coordinates
+    #                 tmp.append([round(y*resize_value), round(x*resize_value)])
+
+    #             if args.annotation_text_name == "annotation_label6.txt":
+    #                 label_coordinate_list.append([
+    #                     f'{image_num}_pad.png',num_of_pixels,
+    #                     tmp[0][0], tmp[0][1], tmp[1][0], tmp[1][1], tmp[2][0], tmp[2][1],
+    #                     tmp[3][0], tmp[3][1], tmp[4][0], tmp[4][1], tmp[5][0], tmp[5][1],
+    #                 ])
+    #             elif args.annotation_text_name == "annotation_label8.txt":
+    #                 label_coordinate_list.append([
+    #                     f'{image_num}_pad.png',num_of_pixels,
+    #                     tmp[0][0], tmp[0][1], tmp[1][0], tmp[1][1], tmp[2][0], tmp[2][1],
+    #                     tmp[3][0], tmp[3][1], tmp[4][0], tmp[4][1], tmp[5][0], tmp[5][1],
+    #                     tmp[6][0], tmp[6][1], tmp[7][0], tmp[7][1]
+    #                 ])
+
+    # if args.annotation_text_name == "annotation_label6.txt":
+    #     fields = ['image','data',
+    #             'label_0_y', 'label_0_x', 'label_1_y', 'label_1_x', 'label_2_y', 'label_2_x',
+    #             'label_3_y', 'label_3_x', 'label_4_y', 'label_4_x', 'label_5_y', 'label_5_x',
+    #     ]
+    # elif args.annotation_text_name == "annotation_label8.txt":
+    #     fields = ['image','data',
+    #             'label_0_y', 'label_0_x', 'label_1_y', 'label_1_x', 'label_2_y', 'label_2_x',
+    #             'label_3_y', 'label_3_x', 'label_4_y', 'label_4_x', 'label_5_y', 'label_5_x',
+    #             'label_6_y', 'label_6_x', 'label_7_y', 'label_7_x'
+    #     ]
+    
+
+    # with open(f'{args.dataset_csv_path}', 'w', newline='') as f:
+    #     write = csv.writer(f)
+    #     write.writerow(fields)
+    #     write.writerows(label_coordinate_list)
 
     print("---------- Creating Dataset Done ----------\n")
