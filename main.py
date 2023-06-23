@@ -116,7 +116,7 @@ if __name__ == '__main__':
 
     ## hyperparameters - data
     parser.add_argument('--dataset_path', type=str, default="./data/dataset", help='dataset path')
-    parser.add_argument('--dataset_csv_path', type=str, default="./xlsx/train_dataset.csv", help='dataset excel file path')
+    parser.add_argument('--dataset_csv_path', type=str, default="./xlsx/dataset.csv", help='dataset excel file path')
     parser.add_argument('--test_dataset_csv_path', type=str, default="./xlsx/test_dataset.csv", help='dataset excel file path')
     parser.add_argument('--annotation_text_path', type=str, default="./data/annotation_text_files", help='annotation text file path')
     parser.add_argument('--annotation_text_name', type=str, default="annotation_label8.txt", help='annotation text file name')

@@ -128,10 +128,10 @@ def validate_function(loader, model, args, epoch, device):
             angles_total.append([LDFA, MPTA, mHKA, LDFA_GT, MPTA_GT, mHKA_GT])
             if idx == 0:
                 angle_overlaid_image_w_label = angle_visualization(
-                    args, args.wandb_name, data_path, idx, 300, index_list, label_list, 0, angles_total[idx], "without label"
+                    args, args.wandb_name, data_path, idx, 300, index_list, label_list, 0, angles_total[idx], "without label", 'val'
                 )
                 angle_overlaid_image_wo_label = angle_visualization(
-                    args, args.wandb_name, data_path, idx, 300, index_list, label_list, 0, angles_total[idx], "with label"
+                    args, args.wandb_name, data_path, idx, 300, index_list, label_list, 0, angles_total[idx], "with label", 'val'
                 )
 
             ## make predictions to be 0. or 1.

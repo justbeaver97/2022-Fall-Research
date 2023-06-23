@@ -2,6 +2,8 @@
 reference:
     two sample t-test:
         https://mindscale.kr/course/basic-stat-python/16/
+
+if the label values are wrong, switch the train_dataset.csv path
 """
 
 import argparse
@@ -46,7 +48,7 @@ def main(args):
     model.load_state_dict(checkpoint['state_dict'])
     model.eval()
 
-    _, val_loader = load_data(args)
+    _, val_loader, _ = load_data(args)
 
     total_LDFA, total_MPTA, total_mHKA = 0, 0, 0
     LDFA_list, MPTA_list, mHKA_list = [], [], []
@@ -71,8 +73,8 @@ def main(args):
         total_mHKA += abs(mHKA-mHKA_GT)
 
         angles.append([LDFA, MPTA, mHKA, LDFA_GT, MPTA_GT, mHKA_GT])
-        # angle_visualization(args, experiment, data_path, idx, 300, index_list, label_list, 0, angles[idx], "without label")
-        # angle_visualization(args, experiment, data_path, idx, 300, index_list, label_list, 0, angles[idx], "with label")
+        angle_visualization(args, experiment, data_path, idx, 300, index_list, label_list, 0, angles[idx], "without label", 'val_big_font')
+        angle_visualization(args, experiment, data_path, idx, 300, index_list, label_list, 0, angles[idx], "with label", 'val_big_font')
     angle_graph(angles)
 
     # for idx, (image, _, data_path, label_list) in enumerate(tqdm(test_loader)):
