@@ -43,32 +43,33 @@ class CustomDataset(Dataset):
 
     def __getitem__(self, idx):
         self.df = self.df.fillna(0)
-        image_dir, num_of_pixels = self.df['image'][idx], self.df['data'][idx]
+        image_dir = self.df['image'][idx]
+        image_dir = f'{image_dir.split("_")[0]}_pad.png'
         image_path = f'{self.dataset_path}/{image_dir}'
         image = np.array(Image.open(image_path).convert("RGB"))
 
         if self.args.output_channel == 6:
-            label_0_y, label_0_x = self.df['label_0_y'][idx], self.df['label_0_x'][idx]
-            label_1_y, label_1_x = self.df['label_1_y'][idx], self.df['label_1_x'][idx]
-            label_2_y, label_2_x = self.df['label_3_y'][idx], self.df['label_3_x'][idx]
-            label_3_y, label_3_x = self.df['label_4_y'][idx], self.df['label_4_x'][idx]
-            label_4_y, label_4_x = self.df['label_6_y'][idx], self.df['label_6_x'][idx]
-            label_5_y, label_5_x = self.df['label_7_y'][idx], self.df['label_7_x'][idx]
-            label_list = [
-                label_0_y, label_0_x, label_1_y, label_1_x, label_2_y, label_2_x,
-                label_3_y, label_3_x, label_4_y, label_4_x, label_5_y, label_5_x,
-            ]
-
             # label_0_y, label_0_x = self.df['label_0_y'][idx], self.df['label_0_x'][idx]
             # label_1_y, label_1_x = self.df['label_1_y'][idx], self.df['label_1_x'][idx]
-            # label_2_y, label_2_x = self.df['label_2_y'][idx], self.df['label_2_x'][idx]
-            # label_3_y, label_3_x = self.df['label_3_y'][idx], self.df['label_3_x'][idx]
-            # label_4_y, label_4_x = self.df['label_4_y'][idx], self.df['label_4_x'][idx]
-            # label_5_y, label_5_x = self.df['label_5_y'][idx], self.df['label_5_x'][idx]
+            # label_2_y, label_2_x = self.df['label_3_y'][idx], self.df['label_3_x'][idx]
+            # label_3_y, label_3_x = self.df['label_4_y'][idx], self.df['label_4_x'][idx]
+            # label_4_y, label_4_x = self.df['label_6_y'][idx], self.df['label_6_x'][idx]
+            # label_5_y, label_5_x = self.df['label_7_y'][idx], self.df['label_7_x'][idx]
             # label_list = [
             #     label_0_y, label_0_x, label_1_y, label_1_x, label_2_y, label_2_x,
             #     label_3_y, label_3_x, label_4_y, label_4_x, label_5_y, label_5_x,
             # ]
+
+            label_0_y, label_0_x = self.df['label_0_y'][idx], self.df['label_0_x'][idx]
+            label_1_y, label_1_x = self.df['label_1_y'][idx], self.df['label_1_x'][idx]
+            label_2_y, label_2_x = self.df['label_2_y'][idx], self.df['label_2_x'][idx]
+            label_3_y, label_3_x = self.df['label_3_y'][idx], self.df['label_3_x'][idx]
+            label_4_y, label_4_x = self.df['label_4_y'][idx], self.df['label_4_x'][idx]
+            label_5_y, label_5_x = self.df['label_5_y'][idx], self.df['label_5_x'][idx]
+            label_list = [
+                label_0_y, label_0_x, label_1_y, label_1_x, label_2_y, label_2_x,
+                label_3_y, label_3_x, label_4_y, label_4_x, label_5_y, label_5_x,
+            ]
 
             mask0 = np.zeros([self.image_resize, self.image_resize])
             mask1 = np.zeros([self.image_resize, self.image_resize])
@@ -206,7 +207,7 @@ def load_data(args):
                 max_pixel_value=255.0,
             ),
             ToTensorV2(),
-        ])
+        ],is_check_shapes=False)
         val_transform = A.Compose([
             A.Resize(height=IMAGE_RESIZE, width=IMAGE_RESIZE),
             A.Normalize(
@@ -215,7 +216,7 @@ def load_data(args):
                 max_pixel_value=255.0,
             ),
             ToTensorV2(),
-        ])
+        ],is_check_shapes=False)
 
     train_dataset = CustomDataset(
         train_df, args, train_transform

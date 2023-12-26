@@ -93,20 +93,36 @@ def ground_truth_prediction_plot(args, idx, original, epoch, highest_probability
 
 def save_overlaid_image(args, idx, predicted_label, data_path, highest_probability_pixels_list, label_list, epoch):
     image_path = f'{args.padded_image}/{data_path}'
-
+    original = Image.open(image_path).resize((args.image_resize,args.image_resize)).convert("RGB")
+    pixel_overlaid_image = Image.open(image_path).resize((args.image_resize,args.image_resize)).convert("RGB")
+    count = 0
+    # print(len(label_list))
     for i in range(args.output_channel):
-        original = Image.open(image_path).resize((args.image_resize,args.image_resize)).convert("RGB")
         background = predicted_label[0][i].unsqueeze(0)
         background = TF.to_pil_image(torch.cat((background, background, background), dim=0))
         overlaid_image = Image.blend(original, background , 0.3)
-        overlaid_image.save(f'./plot_results/{args.wandb_name}/overlaid/label{i}/val{idx}_overlaid.png')
-        overlaid_image.save(f'./plot_results/{args.wandb_name}/label{i}/epoch_{epoch}_overlaid.png')
+        # overlaid_image.save(f'./plot_results/{args.wandb_name}/overlaid/label{i}/val{idx}_overlaid.png')
+        # overlaid_image.save(f'./plot_results/{args.wandb_name}/label{i}/epoch_{epoch}_overlaid.png')
+        if idx == 13: 
+            # ground_truth_prediction_plot(args, idx, original, epoch, highest_probability_pixels_list, label_list, i)
+            x, y = int(highest_probability_pixels_list[idx][i][0][1]), int(highest_probability_pixels_list[idx][i][0][0])
+            pixel_overlaid_image = Image.fromarray(cv2.circle(np.array(pixel_overlaid_image), (x,y), 10, (255, 0, 0),-1))
+            
+            # print(count)
+            if i == 2 or i == 5:
+                count += 1
+            x, y = int(label_list[2*i+1]), int(label_list[2*i])
+            count += 1
+            pixel_overlaid_image = Image.fromarray(cv2.circle(np.array(pixel_overlaid_image), (x,y), 10, (0, 0, 255),-1))
+            # pixel_overlaid_image.save(f'./plot_results/{args.wandb_name}/overlaid/label{i}/epoch{epoch}_val{idx}_pred_gt.png')
 
-        if i != args.output_channel:
-            prediction_plot(args, idx, highest_probability_pixels_list, i, original)
+        # if i != args.output_channel:
+        #     prediction_plot(args, idx, highest_probability_pixels_list, i, original)
 
-            if (epoch == 0 or epoch % args.dilation_epoch == (args.dilation_epoch-1)) and idx == 0:
-                ground_truth_prediction_plot(args, idx, original, epoch, highest_probability_pixels_list, label_list, i)
+            # if (epoch == 0 or epoch % args.dilation_epoch == (args.dilation_epoch-1)) and idx == 1:
+            #     ground_truth_prediction_plot(args, idx, original, epoch, highest_probability_pixels_list, label_list, i)
+    if idx == 13:
+        pixel_overlaid_image.save(f'./plot_results/{args.wandb_name}/overlaid/all/epoch{epoch}_val{idx}.png')
 
 
 def save_predictions_as_images(args, loader, model, epoch, highest_probability_pixels_list, label_list_total, device="cuda"):
@@ -122,9 +138,11 @@ def save_predictions_as_images(args, loader, model, epoch, highest_probability_p
             else:               preds = torch.sigmoid(model(image))
             preds_binary = (preds > args.threshold).float()
 
+        if epoch % 5 == 0:
+            save_overlaid_image(args, idx, preds_binary, data_path, highest_probability_pixels_list, label_list, epoch)
         ## TODO: record heatmaps even if the loss hasn't decreased
         # if epoch % args.dilation_epoch == (args.dilation_epoch-1) and idx == 0: 
-        if epoch % 50 == 0 and idx == 0:
+        if epoch % 50 == 0 and idx == 13:
             save_label_image(args, label, data_path, label_list, epoch)
         # if args.pixel_loss and (epoch % 10 == 0 or epoch % args.dilation_epoch == (args.dilation_epoch-1)):
         #     if args.dilation_epoch >= 10:
@@ -173,7 +191,8 @@ def angle_visualization(
         line_width, circle_size = 1, 4
     elif method == "without label":
         image_path = f'{args.padded_image}/{data_path[0]}'
-        line_width, circle_size = 3, 5
+        line_width, circle_size = 5, 8
+    font_size = 30
 
     angle_overlaid_image = Image.open(image_path).resize((args.image_resize,args.image_resize)).convert("RGB")
     LDFA_text = f'dFA: {angles[0]:.2f}\nAnswer: {angles[3]:.2f}'
@@ -185,7 +204,7 @@ def angle_visualization(
     text = [LDFA_text, MPTA_text, mHKA_text]
 
     count, pixels = 0, []
-    font = ImageFont.truetype("plot_data/font/Gidole-Regular.ttf", size=15)
+    font = ImageFont.truetype("plot_data/font/Gidole-Regular.ttf", size=font_size)
 
     for i in range(args.output_channel):
         # x, y = int(highest_probability_pixels_list[idx][i][0][1]), int(highest_probability_pixels_list[idx][i][0][0])
@@ -206,9 +225,9 @@ def angle_visualization(
         line_pixel = [line1, line2, line3, line4, line5]
 
         text_pixel = [
-            (((pixels[0][0]+pixels[1][0])/2-90), (2*pixels[0][1]+5*pixels[1][1])/7),
-            (((pixels[3][0]+pixels[5][0])/2-90), (4*pixels[3][1]+pixels[5][1])/5),
-            (((pixels[0][0]+pixels[5][0])/2+50), (pixels[0][1]+pixels[5][1])/2),   
+            (((pixels[0][0]+pixels[1][0])/2-170), (2*pixels[0][1]+5*pixels[1][1])/7),
+            (((pixels[3][0]+pixels[5][0])/2-155), (4*pixels[3][1]+pixels[5][1])/5),
+            (((pixels[0][0]+pixels[5][0])/2+30), (pixels[0][1]+pixels[5][1]*2)/3),   
         ]
     elif args.output_channel == 8:
         line1 = ((pixels[0][0],pixels[0][1]),(pixels[3][0],pixels[3][1]))
@@ -229,11 +248,11 @@ def angle_visualization(
     if args.wandb_sweep:
         return angle_overlaid_image
     else:
-        draw = draw_text(draw, text_pixel, text, rgb, font)
+        # draw = draw_text(draw, text_pixel, text, rgb, font)
         if method == "with label":
-            angle_overlaid_image.save(f'./plot_results/{experiment}/angles/{vis_type}{idx}_angle_with_label.png')
+            angle_overlaid_image.save(f'./plot_results/{experiment}/angles/{epoch}_{vis_type}{idx}_angle_with_label.png')
         elif method == "without label":
-            angle_overlaid_image.save(f'./plot_results/{experiment}/angles/{vis_type}{idx}_angle.png')
+            angle_overlaid_image.save(f'./plot_results/{experiment}/angles/{epoch}_{vis_type}{idx}_angle.png')
         return angle_overlaid_image
 
 

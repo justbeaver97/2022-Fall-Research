@@ -89,7 +89,7 @@ def train_function(args, DEVICE, model, loss_fn_pixel, loss_fn_geometry, loss_fn
 def validate_function(loader, model, args, epoch, device):
     print("=====Starting Validation=====")
     model.eval()
-
+    angle_overlaid_image_w_label = None
     num_correct, num_pixels = 0, 0
     num_labels, num_labels_correct = 0, 0
     predict_as_label, prediction_correct  = 0, 0
@@ -126,12 +126,12 @@ def validate_function(loader, model, args, epoch, device):
             total_diff_mHKA += abs(mHKA_GT-mHKA)
 
             angles_total.append([LDFA, MPTA, mHKA, LDFA_GT, MPTA_GT, mHKA_GT])
-            if idx == 0:
+            if epoch % 5 ==0 and idx == 13:
                 angle_overlaid_image_w_label = angle_visualization(
-                    args, args.wandb_name, data_path, idx, 300, index_list, label_list, 0, angles_total[idx], "without label", 'val'
+                    args, args.wandb_name, data_path, idx, epoch, index_list, label_list, 0, angles_total[idx], "without label", 'val'
                 )
                 angle_overlaid_image_wo_label = angle_visualization(
-                    args, args.wandb_name, data_path, idx, 300, index_list, label_list, 0, angles_total[idx], "with label", 'val'
+                    args, args.wandb_name, data_path, idx, epoch, index_list, label_list, 0, angles_total[idx], "with label", 'val'
                 )
 
             ## make predictions to be 0. or 1.

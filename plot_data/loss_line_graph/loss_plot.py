@@ -38,14 +38,14 @@ def main(args):
     ax1.imshow(image1)
 
     ax2 = fig.add_subplot(rows, cols, 2)
-    ax2.set_title('Epoch 99', fontsize=14)
+    ax2.set_title('Epoch 149', fontsize=14)
     ax2.grid(False)
     ax2.set_xticks([])
     ax2.set_yticks([])
     ax2.imshow(image2)
 
     ax3 = fig.add_subplot(rows, cols, 3)
-    ax3.set_title('Epoch 249', fontsize=14)
+    ax3.set_title('Epoch 309', fontsize=14)
     ax3.grid(False)
     ax3.set_xticks([])
     ax3.set_yticks([])
@@ -71,17 +71,17 @@ def main(args):
     ##TODO: Draw vertical line
     fig.tight_layout()
 
-    xy1 = (1, 1.24)
+    xy1 = (1, 4400)
     xy2 = (255, 511)
     con = ConnectionPatch(xyA=xy1, xyB=xy2, coordsA="data", coordsB="data", axesA=ax4, axesB=ax1, color="red")
     ax4.add_artist(con)
 
-    xy1 = (99, 1.05)
+    xy1 = (149, 3600)
     xy2 = (255, 511)
     con = ConnectionPatch(xyA=xy1, xyB=xy2, coordsA="data", coordsB="data", axesA=ax4, axesB=ax2, color="red")
     ax4.add_artist(con)
 
-    xy1 = (249, 0.98)
+    xy1 = (309, 1170)
     xy2 = (255, 511)
     con = ConnectionPatch(xyA=xy1, xyB=xy2, coordsA="data", coordsB="data", axesA=ax4, axesB=ax3, color="red")
     ax4.add_artist(con)
@@ -92,12 +92,12 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--image1', type=str, default="epoch0_val0_pred_gt.png")
-    parser.add_argument('--image2', type=str, default="epoch99_val0_pred_gt.png")
-    parser.add_argument('--image3', type=str, default="epoch249_val0_pred_gt.png")
+    parser.add_argument('--image1', type=str, default="poster_epoch0_val0_pred_gt.png")
+    parser.add_argument('--image2', type=str, default="poster_epoch149_val0_pred_gt.png")
+    parser.add_argument('--image3', type=str, default="poster_epoch309_val0_pred_gt.png")
 
-    parser.add_argument('--experiment', type=str, default="MIDL_D60-5_W_P_progressive_weighted_erosion_ver2_1e-4_50")
-    parser.add_argument('--plot_name', type=str, default="2023_MIDL_Loss_Graph")
+    parser.add_argument('--experiment', type=str, default="Label6_D68-2_to2_AW-P1000+A_every10_chx2")
+    parser.add_argument('--plot_name', type=str, default="2023_MIDL_Poster_Loss_Graph")
     args = parser.parse_args()
 
     main(args)

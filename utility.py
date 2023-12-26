@@ -69,6 +69,8 @@ def create_directories(args, folder='./plot_results'):
         os.mkdir(f'./plot_results/{args.wandb_name}/annotation')
     if not os.path.exists(f'./plot_results/{args.wandb_name}/overlaid'):
         os.mkdir(f'./plot_results/{args.wandb_name}/overlaid')
+    if not os.path.exists(f'./plot_results/{args.wandb_name}/overlaid/all'):
+        os.mkdir(f'./plot_results/{args.wandb_name}/overlaid/all')
     for i in range(num_channels):
         if not os.path.exists(f'./plot_results/{args.wandb_name}/overlaid/label{i}'):
             os.mkdir(f'./plot_results/{args.wandb_name}/overlaid/label{i}')

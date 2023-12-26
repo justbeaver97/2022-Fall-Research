@@ -109,5 +109,5 @@ def get_pretrained_model(args, DEVICE):
 
     print("---------- Pretrained Model Loaded ----------")
 
-    model.segmentation_head = nn.Sequential(*list(model.segmentation_head.children())[:-1])
+    # model.segmentation_head = nn.Sequential(*list(model.segmentation_head.children())[:-1])
     return model.to(DEVICE)

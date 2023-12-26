@@ -30,6 +30,8 @@ def main(args):
     ## data preprocessing
     if args.data_preprocessing:
         useful_dicom_list, original_annotation_list = preprocess.get_dataset(args)
+        print(original_annotation_list)
+        exit()
         useful_dicom_path_list = preprocess.get_path(useful_dicom_list, args)
         
         preprocess.dicom2png(useful_dicom_path_list, args)

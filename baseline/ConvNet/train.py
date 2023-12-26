@@ -92,4 +92,4 @@ def train(args, DEVICE, model, loss_fn, optimizer, train_loader, val_loader):
 
         if epoch == args.epochs - 1:
             box_plot(args, mse_list)
-            torch.save(checkpoint, f"../../results/{args.wandb_name}.pth")
+            # torch.save(checkpoint, f"../../results/{args.wandb_name}.pth")
